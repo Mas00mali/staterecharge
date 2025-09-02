@@ -1,9 +1,7 @@
-<!-- admin.html (REPLACE your admin.html with this file) -->
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>Admin Panel - ICAN</title>
+  <meta charset="utf-8"><title>Admin Panel</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="style.css">
   <!-- Firebase SDKs -->
@@ -13,108 +11,142 @@
 </head>
 <body>
   <div class="topbar card">
-    <div style="font-weight:800">Admin Panel</div>
-    <div style="margin-left:auto"><button class="btn btn-ghost" onclick="logout()">Logout</button></div>
+    <div class="brand">Admin Panel</div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn btn-ghost" onclick="logout()">Logout</button>
+    </div>
   </div>
 
   <div class="container">
-    <div id="adminArea" class="card">
+    <div class="card">
       <h3>Pending Membership Requests</h3>
-      <div id="pendingRequests">Loading...</div>
+      <div id="pendingList" class="small">Loading...</div>
     </div>
 
     <div class="card" style="margin-top:12px">
-      <h3>Company Wallet</h3>
-      <div id="adminWallet">Loading...</div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <h3>Recent Commissions</h3>
-      <div id="commissionsList">Loading...</div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <h3>All Users</h3>
+      <h3>Users</h3>
       <div id="usersList">Loading...</div>
     </div>
+
+    <div class="card" style="margin-top:12px">
+      <h3>Transactions</h3>
+      <div id="txnList">Loading...</div>
+    </div>
+
   </div>
 
   <script src="firebase.js"></script>
   <script>
-    // Admin guard: ensure logged in and role=ADMIN
-    (async ()=>{
+    // Admin guard: must be logged in and have role 'ADMIN'
+    (async function guard(){
       const user = await window._NM.currentUserPromise();
-      if(!user) return window.location = 'index.html';
+      if(!user) return location.href='index.html';
       const doc = await window._NM.getUserDoc(user.uid);
-      if(!doc || doc.role !== 'ADMIN'){ alert('Access denied. Make sure your user has role: ADMIN in Firestore.'); return window.location='dashboard.html'; }
-      loadAdmin();
+      if(!doc || doc.role !== 'ADMIN'){ alert('Access denied. Make sure user role=ADMIN in Firestore.'); return location.href='dashboard.html'; }
+      loadPending();
+      loadUsers();
+      loadTxns();
     })();
 
-    async function loadAdmin(){
-      const listWrap = document.getElementById('pendingRequests');
-      listWrap.innerHTML = 'Loading...';
+    async function loadPending(){
+      const wrap = document.getElementById('pendingList');
+      wrap.innerHTML = 'Loading...';
       try{
-        const reqs = await window._NM.getPendingMembershipRequests(200);
-        if(!reqs.length){ listWrap.innerHTML = '<div class="small">No pending requests.</div>'; } else {
-          listWrap.innerHTML = '';
-          reqs.forEach(r => {
-            const box = document.createElement('div');
-            box.className = 'card';
-            box.style.marginBottom='8px';
-            box.innerHTML = `<div style="display:flex;gap:12px;align-items:center">
+        const reqs = await window._NM.getPendingMembershipRequests(500);
+        if(!reqs.length){ wrap.innerHTML = '<div class="small">No pending requests.</div>'; return; }
+        wrap.innerHTML = '';
+        reqs.forEach(r=>{
+          const el = document.createElement('div');
+          el.className = 'card';
+          el.style.marginBottom='8px';
+          el.innerHTML = `
+            <div style="display:flex;gap:12px;align-items:center">
               <div style="flex:1">
-                <div><strong>${r.name}</strong> <span class="small"> (User: ${r.userUid})</span></div>
+                <div><strong>${r.name}</strong> <span class="small">(${r.userUid})</span></div>
+                <div class="small">Plan: ${r.planKey} • Amount: ₹${r.planPrice}</div>
                 <div class="small">UTR: ${r.utr}</div>
                 <div class="small">Submitted: ${r.createdAt && r.createdAt.toDate ? r.createdAt.toDate().toLocaleString() : ''}</div>
               </div>
-              <div style="display:flex;flex-direction:column;gap:8px">
-                <button class="btn btn-primary" onclick="approveReq('${r.id}')">Approve</button>
-                <button class="btn btn-ghost" onclick="rejectReq('${r.id}')">Reject</button>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <button class="btn btn-primary" onclick="approve('${r.id}')">Approve</button>
+                <button class="btn btn-ghost" onclick="reject('${r.id}')">Reject</button>
               </div>
-            </div>`;
-            listWrap.appendChild(box);
-          });
-        }
-
-        // Admin wallet
-        const wallet = await window._NM.getAdminWallet();
-        document.getElementById('adminWallet').innerText = 'Balance: ₹ ' + (wallet.walletBalance || 0);
-
-        // Commissions
-        const comms = await window._NM.getAllCommissions(50);
-        document.getElementById('commissionsList').innerHTML = comms.length ? comms.map(c=>{
-          const rows = (c.records||[]).map(r => `L${r.level}→${r.to==='ADMIN'?'Company':r.to} ₹${r.amount}`).join('<br>');
-          return `<div style="padding:8px;border-bottom:1px solid rgba(255,255,255,0.03)">${c.buyerUid} • ${new Date(c.distributedAt?.toDate?.() || Date.now()).toLocaleString()}<div style="font-size:13px;margin-top:6px">${rows}</div></div>`;
-        }).join('') : 'No commissions';
-
-        // Users
-        const users = await window._NM.getAllUsers();
-        document.getElementById('usersList').innerHTML = users.length ? `<table class="table"><thead><tr><th>Name</th><th>Email</th><th>Referral</th><th>Wallet</th><th>Role</th></tr></thead><tbody>${users.map(u=> `<tr><td>${u.name||''}</td><td>${u.email||''}</td><td>${u.referralCode||''}</td><td>₹ ${u.walletBalance||0}</td><td>${u.role||'ASSOCIATE'}</td></tr>`).join('')}</tbody></table>` : 'No users';
-
-      }catch(e){
-        listWrap.innerHTML = 'Error: ' + e.message;
-      }
+            </div>
+          `;
+          wrap.appendChild(el);
+        });
+      }catch(e){ wrap.innerText = 'Error: ' + e.message; }
     }
 
-    async function approveReq(id){
-      if(!confirm('Approve this membership and distribute commissions?')) return;
+    async function approve(id){
+      if(!confirm('Approve and distribute commission?')) return;
+      const admin = firebase.auth().currentUser;
       try{
-        const admin = firebase.auth().currentUser;
-        const res = await window._NM.adminApproveRequest(id, admin ? admin.uid : 'ADMIN');
-        alert('Approved. Commission distributed.');
-        loadAdmin();
-      }catch(e){ alert('Error: '+ e.message); }
+        await window._NM.adminApproveRequest(id, admin ? admin.uid : 'ADMIN');
+        alert('Approved and commissions distributed.');
+        loadPending(); loadUsers(); loadTxns();
+      }catch(e){ alert('Error: ' + e.message); }
     }
-
-    async function rejectReq(id){
-      const reason = prompt('Enter reject reason (optional)');
+    async function reject(id){
+      const reason = prompt('Reject reason (optional)');
+      const admin = firebase.auth().currentUser;
       try{
-        const admin = firebase.auth().currentUser;
         await window._NM.adminRejectRequest(id, admin ? admin.uid : 'ADMIN', reason || '');
-        alert('Request rejected.');
-        loadAdmin();
-      }catch(e){ alert('Error: '+ e.message); }
+        alert('Rejected.');
+        loadPending();
+      }catch(e){ alert('Error: ' + e.message); }
     }
+
+    async function loadUsers(){
+      const wrap = document.getElementById('usersList');
+      wrap.innerHTML = 'Loading...';
+      try{
+        const users = await window._NM.getAllUsers();
+        if(!users.length){ wrap.innerHTML='<div class="small">No users</div>'; return; }
+        const table = document.createElement('table'); table.className='table';
+        table.innerHTML = `<thead><tr><th>Name</th><th>Email</th><th>Wallet</th><th>Plan</th><th>Action</th></tr></thead><tbody></tbody>`;
+        const tbody = table.querySelector('tbody');
+        users.forEach(u=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${u.name || ''}</td><td>${u.email || ''}</td><td>₹ ${u.walletBalance || 0}</td><td>${u.plan || ''}</td>
+            <td>
+              <button class="btn btn-primary" onclick="promptCredit('${u.id}','${u.name || ''}')">Credit</button>
+              <button class="btn btn-ghost" onclick="promptDebit('${u.id}','${u.name || ''}')">Debit</button>
+            </td>`;
+          tbody.appendChild(tr);
+        });
+        wrap.innerHTML = ''; wrap.appendChild(table);
+      }catch(e){ wrap.innerText = 'Error: ' + e.message; }
+    }
+
+    function promptCredit(uid, name){
+      const amt = prompt(`Enter credit amount for ${name}:`);
+      if(!amt) return;
+      window._NM.creditWallet(uid, Number(amt), `Admin credit by ${firebase.auth().currentUser.uid}`).then(()=> {
+        alert('Credited');
+        loadUsers(); loadTxns();
+      }).catch(e=> alert('Error: '+ e.message));
+    }
+    function promptDebit(uid, name){
+      const amt = prompt(`Enter debit amount for ${name}:`);
+      if(!amt) return;
+      window._NM.debitWallet(uid, Number(amt), `Admin debit by ${firebase.auth().currentUser.uid}`).then(()=> {
+        alert('Debited');
+        loadUsers(); loadTxns();
+      }).catch(e=> alert('Error: '+ e.message));
+    }
+
+    async function loadTxns(){
+      const wrap = document.getElementById('txnList');
+      wrap.innerHTML = 'Loading...';
+      try{
+        const txs = await window._NM.getAllTransactions(200);
+        if(!txs.length){ wrap.innerHTML = '<div class="small">No transactions</div>'; return; }
+        wrap.innerHTML = txs.map(t => `<div class="small">${t.createdAt && t.createdAt.toDate ? t.createdAt.toDate().toLocaleString() : ''} • ${t.userId} • ${t.type} • ₹${t.amount} • ${t.note || ''}</div>`).join('');
+      }catch(e){ wrap.innerText = 'Error: ' + e.message; }
+    }
+
+    function logout(){ window._NM.logout(); }
   </script>
 </body>
 </html>
