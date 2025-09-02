@@ -1,5 +1,5 @@
-// firebase.js (FINAL — membership_requests + adminApproveRequest + commission distribution)
-// Include Firebase SDKs BEFORE this file in each HTML:
+// firebase.js (REPLACE your existing file with this exact content)
+// Remember: include Firebase SDK scripts in every HTML BEFORE this file:
 // <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 // <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 // <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -33,7 +33,7 @@ function currentUserPromise(){
   return new Promise((resolve)=>{ const unsub = auth.onAuthStateChanged(u=>{ unsub(); resolve(u); }); });
 }
 
-// ======= Signup / Login (unchanged) =======
+// ======= Signup / Login =======
 async function signupUser(name, email, password, sponsorCode){
   const cred = await auth.createUserWithEmailAndPassword(email, password);
   await cred.user.updateProfile({ displayName: name || '' });
@@ -63,7 +63,7 @@ async function addMoney(uid, amount, note='Add Money (demo)'){
   await userRef.collection('walletTransactions').add({ type:'CREDIT', amount, note, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
 }
 
-// ======= Commission Engine (same as before) =======
+// ======= Commission Engine =======
 const COMMISSION_TABLE = [100,50,25,10,5]; // level1..level5
 
 async function findUserByReferralCode(code){
@@ -129,7 +129,7 @@ async function distributeCommission(buyerUid){
   return commissionRecords;
 }
 
-// ======= Membership purchase (server-side validated recommended) =======
+// ======= Membership purchase (marks user membership & distribute) =======
 async function purchaseMembership(buyerUid, planName='MEMBERSHIP 599', planAmount=599){
   const userRef = db.collection('users').doc(buyerUid);
   await userRef.update({ membership: { name: planName, amount: planAmount, boughtAt: firebase.firestore.FieldValue.serverTimestamp() } });
@@ -137,13 +137,7 @@ async function purchaseMembership(buyerUid, planName='MEMBERSHIP 599', planAmoun
   return records;
 }
 
-// ======= New: Membership request flow (UTR submission) =======
-
-/*
- createMembershipRequest(userUid, displayName, utr, qrImageUrl)
-  - Creates a doc in membership_requests with status PENDING
-  - fields: userUid, name, utr, qrImageUrl(optional), status:'PENDING', createdAt
-*/
+// ======= Membership request flow (UTR submission) =======
 async function createMembershipRequest(userUid, name, utr, qrImageUrl = null){
   const payload = {
     userUid,
@@ -154,16 +148,10 @@ async function createMembershipRequest(userUid, name, utr, qrImageUrl = null){
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   const ref = await db.collection('membership_requests').add(payload);
-  // Optionally write a short notification doc
   await db.collection('notifications').add({ forAdmin: true, type:'MEMBERSHIP_REQUEST', requestId: ref.id, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
   return ref.id;
 }
 
-/*
- adminApproveRequest(requestId, adminUid)
-  - Marks the request APPROVED and triggers purchaseMembership + commission distribution
-  - Returns purchase result (commission records)
-*/
 async function adminApproveRequest(requestId, adminUid){
   const reqRef = db.collection('membership_requests').doc(requestId);
   const reqSnap = await reqRef.get();
@@ -171,22 +159,15 @@ async function adminApproveRequest(requestId, adminUid){
   const req = reqSnap.data();
   if(req.status !== 'PENDING') throw new Error('Request already processed');
 
-  // Mark APPROVED first (optimistic)
   await reqRef.update({ status: 'APPROVED', approvedBy: adminUid || null, approvedAt: firebase.firestore.FieldValue.serverTimestamp() });
 
-  // Mark user's membership and distribute commission
   const buyerUid = req.userUid;
   const records = await purchaseMembership(buyerUid, 'MEMBERSHIP 599', 599);
 
-  // Save approval note
   await reqRef.update({ commissionRecords: records });
-
   return records;
 }
 
-/*
- adminRejectRequest(requestId, adminUid, reason)
-*/
 async function adminRejectRequest(requestId, adminUid, reason = ''){
   const reqRef = db.collection('membership_requests').doc(requestId);
   const reqSnap = await reqRef.get();
@@ -197,7 +178,7 @@ async function adminRejectRequest(requestId, adminUid, reason = ''){
   return true;
 }
 
-// ======= Admin / Utility reads =======
+// ======= Admin reads =======
 async function getPendingMembershipRequests(limit = 100){
   const snap = await db.collection('membership_requests').where('status','==','PENDING').orderBy('createdAt','asc').limit(limit).get();
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -209,7 +190,6 @@ async function getAllRequests(limit = 200){
 async function getAllUsers(){ const snap = await db.collection('users').orderBy('createdAt','desc').get(); return snap.docs.map(d=> ({ id: d.id, ...d.data() })); }
 async function getAdminWallet(){ const snap = await db.collection('admin').doc('company').get(); return snap.exists ? snap.data() : { walletBalance: 0 }; }
 async function getAllCommissions(limit=50){ const snap = await db.collection('commissions').orderBy('distributedAt','desc').limit(limit).get(); return snap.docs.map(d=> ({ id: d.id, ...d.data() })); }
-
 async function getUserDoc(uid){ const d = await db.collection('users').doc(uid).get(); return d.exists ? { id: d.id, ...d.data() } : null; }
 
 // Export
