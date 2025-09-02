@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><title>Login - ICAN</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card" style="max-width:520px;margin:0 auto">
+      <h2 style="margin-top:0">Login to ICAN Network</h2>
+      <input id="email" class="input" placeholder="Email" type="email" />
+      <div style="height:8px"></div>
+      <input id="password" class="input" placeholder="Password" type="password" />
+      <div style="height:12px"></div>
+      <button class="btn btn-primary" onclick="doLogin()">Login</button>
+      <button class="btn btn-ghost" onclick="location.href='signup.html'">Sign Up</button>
+      <div style="height:10px"></div>
+      <a href="forgot.html" class="small">Forgot password?</a>
+      <p id="msg" class="small" style="margin-top:12px;color:#ffd"></p>
+    </div>
+  </div>
+
+  <script src="firebase.js"></script>
+  <script>
+    redirectIfLoggedIn('dashboard.html');
+    async function doLogin(){
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      try{
+        await window._NM.loginUser(email,password);
+        window.location='dashboard.html';
+      }catch(e){ document.getElementById('msg').innerText = e.message; }
+    }
+  </script>
+</body>
+</html>
