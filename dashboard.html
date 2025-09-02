@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><title>Dashboard - ICAN</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div class="topbar card">
+    <div style="font-weight:800">ICAN Network Marketing</div>
+    <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+      <button class="btn btn-ghost" onclick="location.href='membership.html'">Buy Membership</button>
+      <button class="btn btn-ghost" onclick="location.href='wallet.html'">Wallet</button>
+      <button class="btn btn-ghost" onclick="location.href='tree.html'">Team Tree</button>
+      <button class="btn btn-ghost" onclick="location.href='referral.html'">Referral</button>
+      <button class="btn btn-ghost" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div id="welcome" class="card">
+      <div style="display:flex;gap:12px;align-items:center">
+        <div>
+          <div class="small">Welcome back</div>
+          <div id="name" style="font-size:20px;font-weight:700">—</div>
+          <div class="small" id="email">—</div>
+        </div>
+        <div style="margin-left:auto;text-align:right">
+          <div class="small">Wallet Balance</div>
+          <div class="wallet-big" id="wallet">₹ 0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px" class="ref-card">
+        <div class="small">Your Referral Code</div>
+        <div style="font-family:monospace;font-weight:800;margin-top:6px" id="refcode">—</div>
+        <button class="btn btn-primary" style="margin-top:8px" onclick="copyReferral()">Copy referral link</button>
+      </div>
+
+      <div style="flex:2;min-width:220px" class="ref-card">
+        <div class="small">Team Summary (Levels 1–5)</div>
+        <div id="teamSummary" style="margin-top:8px">Loading...</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="small">Quick Actions</div>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="location.href='membership.html'">Buy Membership</button>
+        <button class="btn btn-ghost" onclick="location.href='wallet.html'">Add Money</button>
+      </div>
+    </div>
+
+    <div class="footer">Tip: Use the referral link to invite new members. Each new signup with your code will appear in your tree.</div>
+  </div>
+
+  <script src="firebase.js"></script>
+  <script>
+    protectPage();
+    (async ()=>{
+      const user = await window._NM.currentUserPromise();
+      if(!user) return;
+      const doc = await window._NM.getUserDoc(user.uid);
+      document.getElementById('name').innerText = doc.name || user.email;
+      document.getElementById('email').innerText = doc.email;
+      document.getElementById('wallet').innerText = '₹ ' + (doc.walletBalance || 0);
+      const code = user.uid.slice(0,6).toUpperCase();
+      document.getElementById('refcode').innerText = code;
+      const levels = await window._NM.buildTree ? await window._NM.buildTree(user.uid,5) : await window._NM.getUserDoc(user.uid).then(()=>[]); // compatibility
+      if(levels && levels.length){
+        const summary = levels.map((lv,i)=>`Level ${i}: ${lv.length} members`).join('<br>');
+        document.getElementById('teamSummary').innerHTML = summary;
+      } else document.getElementById('teamSummary').innerText = 'No data';
+    })();
+
+    function copyReferral(){
+      const user = firebase.auth().currentUser;
+      if(!user) return alert('User not loaded');
+      const code = user.uid.slice(0,6).toUpperCase();
+      const link = location.origin + '/signup.html?ref=' + code;
+      navigator.clipboard.writeText(link).then(()=> alert('Referral link copied:\\n' + link));
+    }
+  </script>
+</body>
+</html>
