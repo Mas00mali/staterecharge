@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><title>Team Tree</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div class="topbar card">
+    <div style="font-weight:800">My Team Tree</div>
+    <div style="margin-left:auto"><button class="btn btn-ghost" onclick="location.href='dashboard.html'">Back</button></div>
+  </div>
+
+  <div class="container">
+    <div id="treeWrap" class="card">
+      <div class="small">Tree (levels 0–4)</div>
+      <div id="tree" style="margin-top:10px">Loading...</div>
+    </div>
+  </div>
+
+  <script src="firebase.js"></script>
+  <script>
+    protectPage();
+    (async ()=>{
+      const user = await window._NM.currentUserPromise();
+      const levels = await window._NM.buildTree ? await window._NM.buildTree(user.uid,5) : [];
+      const wrap = document.getElementById('tree'); wrap.innerHTML = '';
+      levels.forEach((lvl,i)=>{
+        const heading = document.createElement('div'); heading.className='small'; heading.innerText = 'Level ' + i; wrap.appendChild(heading);
+        if(lvl.length===0){ const empty = document.createElement('div'); empty.className='small'; empty.innerText='No members'; wrap.appendChild(empty); return; }
+        const div = document.createElement('div'); div.className='level';
+        lvl.forEach(m=>{
+          const card = document.createElement('div'); card.className='member';
+          card.innerHTML = `<div style="font-weight:700">${m.name||'Member'}</div><div class='small'>${m.email||''}</div><div class='small'>Code: ${m.uid.slice(0,6).toUpperCase()}</div>`;
+          div.appendChild(card);
+        });
+        wrap.appendChild(div);
+      });
+    })();
+  </script>
+</body>
+</html>
