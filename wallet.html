@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><title>Wallet</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div class="topbar card">
+    <div style="font-weight:800">Wallet</div>
+    <div style="margin-left:auto"><button class="btn btn-ghost" onclick="location.href='dashboard.html'">Back</button></div>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <div class="small">Balance</div>
+      <div id="balance" style="font-size:28px;font-weight:800">₹ 0</div>
+      <div style="height:12px"></div>
+      <input id="amount" class="input" placeholder="Amount to add" />
+      <div style="height:10px"></div>
+      <button class="btn btn-primary" onclick="doAdd()">Add Money (Demo)</button>
+      <button class="btn btn-ghost" onclick="doRequestWithdraw()">Request Withdraw</button>
+      <p id="msg" class="small"></p>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="small">Recent Transactions</div>
+      <div id="txlist" class="small">Loading…</div>
+    </div>
+  </div>
+
+  <script src="firebase.js"></script>
+  <script>
+    protectPage();
+    (async ()=>{
+      const user = await window._NM.currentUserPromise();
+      const doc = await window._NM.getUserDoc(user.uid);
+      document.getElementById('balance').innerText = '₹ ' + (doc.walletBalance || 0);
+      const snap = await firebase.firestore().collection('users').doc(user.uid).collection('walletTransactions').orderBy('createdAt','desc').limit(10).get();
+      const txs = snap.docs.map(d=> d.data());
+      document.getElementById('txlist').innerHTML = txs.length ? txs.map(t=> `${t.type} • ₹ ${t.amount} • ${t.note||''}`).join('<br>') : 'No transactions yet.';
+    })();
+
+    async function doAdd(){
+      const amt = document.getElementById('amount').value;
+      const user = firebase.auth().currentUser;
+      try{
+        await window._NM.addMoney(user.uid, amt);
+        alert('Money added (demo). Refreshing.');
+        location.reload();
+      }catch(e){ document.getElementById('msg').innerText = e.message; }
+    }
+
+    async function doRequestWithdraw(){
+      const amt = prompt('Enter amount to withdraw (min 1):');
+      if(!amt) return;
+      try{
+        const user = firebase.auth().currentUser;
+        await window._NM.requestWithdrawal(user.uid, amt, 'UPI:sample@upi');
+        alert('Withdrawal request created. Admin will process it.');
+      }catch(e){
+        alert('Error: '+ e.message);
+      }
+    }
+  </script>
+</body>
+</html>
