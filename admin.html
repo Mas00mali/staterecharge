@@ -1,103 +1,54 @@
-<!doctype html>
-<html>
+<!-- Admin.html -->
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8"><title>Admin Panel</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="style.css">
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel</title>
+  <style>
+    body {font-family: Arial, sans-serif; background:#f9f9f9; margin:0;}
+    header {background:#333;color:white;padding:15px;text-align:center;}
+    .container {padding:20px;}
+    table {width:100%;border-collapse:collapse;}
+    th,td {border:1px solid #ccc;padding:10px;text-align:center;}
+    th {background:#4CAF50;color:white;}
+    button {padding:6px 12px;border:none;border-radius:6px;cursor:pointer;}
+    .approve {background:#28a745;color:white;}
+  </style>
 </head>
 <body>
-  <div class="topbar card">
-    <div style="font-weight:800">Admin Panel</div>
-    <div style="margin-left:auto"><button class="btn btn-ghost" onclick="logout()">Logout</button></div>
-  </div>
 
-  <div class="container">
-    <div id="adminArea" class="card">
-      <h3>Admin Dashboard</h3>
-      <div id="adminSummary" class="small">Loading...</div>
-      <div style="height:12px"></div>
+<header>
+  <h1>Admin Panel</h1>
+</header>
 
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <div style="flex:1;min-width:280px" class="card">
-          <div style="font-weight:700">Company Wallet</div>
-          <div id="adminWallet" class="small">Loading...</div>
-          <div style="height:8px"></div>
-          <div id="adminTxs" class="small"></div>
-        </div>
+<div class="container">
+  <h2>Pending Approvals</h2>
+  <table>
+    <tr>
+      <th>User Name</th>
+      <th>UTR Number</th>
+      <th>Status</th>
+      <th>Action</th>
+    </tr>
+    <!-- Example Pending User -->
+    <tr>
+      <td>Rahul Sharma</td>
+      <td>UTR123456</td>
+      <td><span style="color:orange;">Pending</span></td>
+      <td><button class="approve" onclick="approveUser(this)">Approve</button></td>
+    </tr>
+  </table>
+</div>
 
-        <div style="flex:2;min-width:300px" class="card">
-          <div style="font-weight:700">Recent Commissions</div>
-          <div id="commissionsList" class="small">Loading...</div>
-        </div>
+<script>
+  function approveUser(btn){
+    let row = btn.parentNode.parentNode;
+    row.cells[2].innerHTML = "<span style='color:green;'>Approved</span>";
+    btn.remove();
+    alert("User Approved ✅ Commission Released!");
+  }
+</script>
 
-        <div style="flex:1;min-width:300px" class="card">
-          <div style="font-weight:700">Withdraw Requests</div>
-          <div id="withdrawList" class="small">Loading...</div>
-        </div>
-      </div>
-
-      <div style="height:12px"></div>
-      <div class="card">
-        <div style="font-weight:700">All Users</div>
-        <div id="usersList" class="small">Loading...</div>
-      </div>
-
-    </div>
-  </div>
-
-  <script src="firebase.js"></script>
-  <script>
-    // Admin guard: only users with role 'ADMIN' can access
-    (async ()=>{
-      const user = await window._NM.currentUserPromise();
-      if(!user) return window.location='index.html';
-      const doc = await window._NM.getUserDoc(user.uid);
-      if(!doc || doc.role !== 'ADMIN'){
-        alert('Access denied. Make sure your user has role: ADMIN in Firestore.');
-        return window.location='dashboard.html';
-      }
-      loadAdmin();
-    })();
-
-    async function loadAdmin(){
-      document.getElementById('adminSummary').innerText = 'Loading admin data...';
-      const wallet = await window._NM.getAdminWallet();
-      document.getElementById('adminWallet').innerText = 'Balance: ₹ ' + (wallet.walletBalance || 0);
-      // admin txs (last 10)
-      const txsnap = await firebase.firestore().collection('admin').doc('company').collection('txs').orderBy('createdAt','desc').limit(10).get();
-      const txs = txsnap.docs.map(d=> d.data());
-      document.getElementById('adminTxs').innerHTML = txs.length ? txs.map(t=> `${t.type} • ₹ ${t.amount} • ${t.note||''}`).join('<br>') : 'No txs';
-
-      // Commissions
-      const comms = await window._NM.getAllCommissions(50);
-      document.getElementById('commissionsList').innerHTML = comms.length ? comms.map(c=>{
-        const rows = (c.records||[]).map(r => `L${r.level}→${r.to==='ADMIN'?'Company':r.to} ₹${r.amount}`).join('<br>');
-        return `<div style="padding:8px;border-bottom:1px solid rgba(255,255,255,0.03)">${c.buyerUid} • ${new Date(c.distributedAt?.toDate?.() || Date.now()).toLocaleString()}<div style="font-size:13px;margin-top:6px">${rows}</div></div>`;
-      }).join('') : 'No commissions';
-
-      // Withdrawals (pending)
-      const w = await window._NM.getWithdrawals('PENDING');
-      document.getElementById('withdrawList').innerHTML = w.length ? w.map(req=> {
-        return `<div style="padding:8px;border-bottom:1px solid rgba(255,255,255,0.03)"><div style="font-weight:700">${req.uid} • ₹ ${req.amount}</div><div class="small">Method: ${req.methodDetails}</div><div style="margin-top:6px"><button class="btn btn-primary" onclick="approveWithdraw('${req.id}')">Mark PAID</button></div></div>`;
-      }).join('') : 'No pending withdrawals';
-
-      // Users
-      const users = await window._NM.getAllUsers();
-      document.getElementById('usersList').innerHTML = users.length ? `<table class="table"><thead><tr><th>Name</th><th>Email</th><th>Referral</th><th>Wallet</th><th>Role</th></tr></thead><tbody>${users.map(u=> `<tr><td>${u.name||''}</td><td>${u.email||''}</td><td>${u.referralCode||''}</td><td>₹ ${u.walletBalance||0}</td><td>${u.role||'ASSOCIATE'}</td></tr>`).join('')}</tbody></table>` : 'No users';
-      document.getElementById('adminSummary').innerText = `Loaded: ${users.length} users, ${comms.length} commissions, ${w.length} pending withdrawals.`;
-    }
-
-    async function approveWithdraw(id){
-      if(!confirm('Mark this withdrawal as PAID?')) return;
-      try{
-        await window._NM.adminApproveWithdrawal(id, firebase.auth().currentUser.uid);
-        alert('Marked PAID');
-        loadAdmin();
-      }catch(e){ alert('Error: ' + e.message); }
-    }
-  </script>
 </body>
 </html>
