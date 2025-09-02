@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><title>Reset Password</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card" style="max-width:520px;margin:0 auto">
+      <h2>Reset Password</h2>
+      <input id="email" class="input" placeholder="Your email" />
+      <div style="height:12px"></div>
+      <button class="btn btn-primary" onclick="doReset()">Send Reset Link</button>
+      <button class="btn btn-ghost" onclick="location.href='index.html'">Back</button>
+      <p id="msg" class="small"></p>
+    </div>
+  </div>
+
+  <script src="firebase.js"></script>
+  <script>
+    redirectIfLoggedIn('dashboard.html');
+    async function doReset(){
+      const email = document.getElementById('email').value.trim();
+      try{
+        await window._NM.sendReset(email);
+        document.getElementById('msg').innerText = 'Password reset link sent to your email.';
+      }catch(e){ document.getElementById('msg').innerText = e.message; }
+    }
+  </script>
+</body>
+</html>
