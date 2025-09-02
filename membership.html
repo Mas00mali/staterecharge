@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><title>Buy Membership - ₹599</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div class="topbar card">
+    <div style="font-weight:800">Membership</div>
+    <div style="margin-left:auto">
+      <button class="btn btn-ghost" onclick="location.href='dashboard.html'">Back</button>
+      <button class="btn btn-ghost" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="card" style="max-width:720px;margin:0 auto">
+      <h2>Membership ₹599</h2>
+      <p class="small">Buy membership and activate commissions. After successful purchase, commissions will be automatically distributed to your uplines (up to 5 levels).</p>
+
+      <div style="display:flex;gap:12px;align-items:center;margin-top:12px">
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:20px">MEMBERSHIP 599</div>
+          <div class="small">Price: ₹599</div>
+        </div>
+        <div>
+          <button id="buyBtn" class="btn btn-primary" onclick="doBuy()">Buy Now ₹599</button>
+        </div>
+      </div>
+
+      <div style="height:12px"></div>
+      <div id="status" class="small"></div>
+
+      <hr style="margin:18px 0">
+      <div>
+        <h4 class="small">Last Commission Distribution (demo)</h4>
+        <div id="lastDist" class="small">—</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="firebase.js"></script>
+  <script>
+    protectPage();
+    (async ()=>{
+      const user = await window._NM.currentUserPromise();
+      if(!user) return;
+      const doc = await window._NM.getUserDoc(user.uid);
+      if(doc && doc.membership && doc.membership.boughtAt){
+        document.getElementById('status').innerText = 'You already own the MEMBERSHIP 599 (bought).';
+        document.getElementById('buyBtn').innerText = 'Already Bought';
+        document.getElementById('buyBtn').disabled = true;
+      }
+    })();
+
+    async function doBuy(){
+      const btn = document.getElementById('buyBtn');
+      btn.disabled = true; btn.innerText = 'Processing...'; document.getElementById('status').innerText = 'Processing payment (demo)...';
+      try{
+        await new Promise(r=>setTimeout(r,1200));
+        const user = firebase.auth().currentUser;
+        if(!user) throw new Error('User not logged in');
+        const records = await window._NM.purchaseMembership(user.uid, 'MEMBERSHIP 599', 599);
+        const html = records.map(r=> `Level ${r.level} → ${ (r.to==='ADMIN') ? 'Company' : 'User: '+r.to } • ₹ ${r.amount}`).join('<br>');
+        document.getElementById('lastDist').innerHTML = html;
+        document.getElementById('status').innerText = 'Membership purchased and commissions distributed successfully.';
+        btn.innerText = 'Purchased';
+      }catch(e){
+        document.getElementById('status').innerText = 'Error: ' + e.message;
+        btn.disabled = false; btn.innerText = 'Buy Now ₹599';
+      }
+    }
+  </script>
+</body>
+</html>
