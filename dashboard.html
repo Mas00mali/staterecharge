@@ -1,274 +1,190 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Dashboard - ICAN Network</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="style.css"> <!-- keep your existing style.css -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Dashboard</title>
   <style>
-    /* small overrides for this dashboard */
-    .topbar { display:flex; align-items:center; gap:12px; padding:12px; background:linear-gradient(90deg,#0b1220,#071226); color:#fff;}
-    .topbar .brand { font-weight:800; font-size:18px; }
-    .topbar .actions { margin-left:auto; display:flex; gap:8px; align-items:center; }
-
-    .container { max-width:1100px; margin:20px auto; padding:12px; }
-    .card { background: rgba(255,255,255,0.03); border-radius:12px; padding:14px; margin-bottom:12px; border:1px solid rgba(255,255,255,0.04); color: #eef7ff; }
-
-    /* modal */
-    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:60; }
-    .modal { background:#0b1220; color:#fff; border-radius:12px; padding:18px; width:96%; max-width:520px; box-shadow:0 10px 30px rgba(2,6,23,0.7); border:1px solid rgba(255,255,255,0.04); }
-    .modal img { width:220px; height:220px; object-fit:contain; border-radius:8px; border:2px solid gold; display:block; margin:10px auto; }
-    .modal .inputs { margin-top:8px; display:flex; flex-direction:column; gap:8px; }
-    .input { padding:10px; border-radius:10px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); color:inherit; width:100%; }
-
-    .btn { padding:10px 14px; border-radius:10px; border:none; cursor:pointer; }
-    .btn-primary { background: #f59e0b; color:#000; font-weight:700; }
-    .btn-ghost { background:transparent; border:1px solid rgba(255,255,255,0.06); color:inherit; }
-
-    /* coin rain container */
-    .coin-rain { position:fixed; inset:0; pointer-events:none; z-index:50; overflow:hidden; }
-
-    /* coin style and animation */
-    @keyframes fall {
-      0% { transform: translateY(-20vh) rotate(0deg); opacity:0; }
-      10% { opacity:1; }
-      100% { transform: translateY(120vh) rotate(720deg); opacity:1; }
+    body {
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      background: linear-gradient(to right, #007bff, #00c851, #ff4444);
+      font-family: Arial, sans-serif;
+      color: white;
+      text-align: center;
     }
+
+    header {
+      position: relative;
+      background: rgba(0,0,0,0.5);
+      padding: 15px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .admin-btn {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      background: gold;
+      color: black;
+      padding: 8px 16px;
+      border-radius: 20px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .coins {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 999;
+    }
+
     .coin {
-      position:absolute;
-      top:-10vh;
-      font-size:12px;
-      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
-      will-change: transform;
-      animation-name: fall;
-      animation-timing-function: linear;
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
+      border-radius: 50%;
+      animation: fall linear forwards;
     }
 
-    /* small responsive adjustments */
-    @media(max-width:700px){
-      .modal img { width:160px; height:160px; }
+    @keyframes fall {
+      0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+    }
+
+    .plan {
+      margin-top: 40px;
+      background: rgba(255,255,255,0.1);
+      padding: 20px;
+      border-radius: 15px;
+      display: inline-block;
+    }
+
+    .plan h2 {
+      margin: 0 0 10px;
+    }
+
+    .btn {
+      background: gold;
+      color: black;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 15px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    /* QR modal */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+    }
+
+    .modal-content {
+      background: white;
+      color: black;
+      margin: 10% auto;
+      padding: 20px;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .modal-content img {
+      width: 200px;
+      height: auto;
+      margin-bottom: 10px;
+    }
+
+    .modal-content input {
+      width: 90%;
+      padding: 8px;
+      margin: 10px 0;
+    }
+
+    .close {
+      float: right;
+      font-size: 22px;
+      cursor: pointer;
+      color: red;
     }
   </style>
 </head>
-<body style="background: linear-gradient(180deg,#071024 0%, #07111a 100%);">
+<body>
 
-  <!-- coin rain layer -->
-  <div class="coin-rain" id="coinRain"></div>
+  <header>
+    <h1>Welcome to Dashboard</h1>
+    <a href="admin.html" class="admin-btn">Admin Login</a>
+  </header>
 
-  <!-- topbar -->
-  <div class="topbar">
-    <div class="brand">ICAN Network Marketing</div>
-    <div class="actions">
-      <button class="btn btn-ghost" onclick="location.href='wallet.html'">Wallet</button>
-      <button class="btn btn-ghost" onclick="location.href='tree.html'">Team Tree</button>
-      <button class="btn btn-ghost" onclick="location.href='referral.html'">Referral</button>
-      <button class="btn btn-ghost" onclick="logout()">Logout</button>
+  <div class="plan">
+    <h2>Gold Plan - ₹599</h2>
+    <p>Buy this plan to start earning commissions.</p>
+    <button class="btn" id="buyNowBtn">Buy Now</button>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="qrModal">
+    <div class="modal-content">
+      <span class="close" id="closeModal">&times;</span>
+      <h3>Scan & Pay</h3>
+      <img src="https://i.postimg.cc/R07NbjBZ/Screenshot-20250902-232628.jpg" alt="QR Code">
+      <p>Send payment & enter UTR below:</p>
+      <input type="text" id="utr" placeholder="Enter UTR Number">
+      <input type="text" id="name" placeholder="Enter Your Name">
+      <button class="btn" onclick="submitUTR()">Submit</button>
     </div>
   </div>
 
-  <div class="container">
-    <!-- Membership / QR Modal trigger card (TOP) -->
-    <div class="card" id="membershipCard" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
-      <div style="flex:1;min-width:240px">
-        <h2 style="margin:0 0 6px 0">MEMBERSHIP 599</h2>
-        <div class="small" style="opacity:0.9">Buy membership and activate commissions. Click below to pay ₹599.</div>
-        <div style="height:10px"></div>
-        <button class="btn btn-primary" onclick="openQRModal()">Buy Plan - ₹599</button>
-        <div id="membershipBadge" class="small" style="margin-top:8px; color:#ffd700; display:none;">Request Sent — Waiting for admin approval</div>
-      </div>
+  <div class="coins"></div>
 
-      <div style="width:220px; text-align:center;">
-        <div style="font-size:12px;color:#cbd5e1">Referral Code</div>
-        <div id="refcode" style="font-family:monospace;font-weight:800;margin-top:4px">—</div>
-      </div>
-    </div>
-
-    <!-- User Info card -->
-    <div id="welcome" class="card">
-      <div style="display:flex;gap:12px;align-items:center">
-        <div>
-          <div class="small">Welcome back</div>
-          <div id="name" style="font-size:20px;font-weight:700">—</div>
-          <div class="small" id="email">—</div>
-        </div>
-        <div style="margin-left:auto;text-align:right">
-          <div class="small">Wallet Balance</div>
-          <div id="wallet" style="font-size:28px;font-weight:800">₹ 0</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Team summary -->
-    <div class="card" style="display:flex;gap:12px;flex-wrap:wrap;">
-      <div style="flex:1" class="ref-card">
-        <div class="small">Team Summary (Levels 1–5)</div>
-        <div id="teamSummary" style="margin-top:8px">Loading...</div>
-      </div>
-
-      <div style="flex:1;min-width:220px" class="ref-card">
-        <div class="small">Quick Actions</div>
-        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-ghost" onclick="location.href='membership.html'">Membership Page</button>
-          <button class="btn btn-ghost" onclick="location.href='wallet.html'">Add Money</button>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- QR Modal (hidden initially) -->
-  <div id="qrModal" class="modal-backdrop" style="display:none;">
-    <div class="modal" role="dialog" aria-modal="true">
-      <h3 style="margin:0 0 6px 0">Complete Payment - ₹599</h3>
-      <p class="small" style="opacity:0.9">Scan this QR with your UPI app and pay. Then paste UTR / Transaction ID below and submit.</p>
-      <img id="qrImage" src="https://i.postimg.cc/R07NbjBZ/Screenshot-20250902-232628.jpg" alt="UPI QR">
-      <div class="inputs">
-        <input id="qr_name" class="input" placeholder="Enter your name (as in bank)">
-        <input id="qr_utr" class="input" placeholder="Enter UTR / Transaction ID">
-        <div style="display:flex;gap:8px;">
-          <button id="qrSubmitBtn" class="btn btn-primary" style="flex:1">Submit UTR</button>
-          <button class="btn btn-ghost" onclick="closeQRModal()">Cancel</button>
-        </div>
-      </div>
-      <div id="qrMsg" class="small" style="margin-top:8px; display:none;"></div>
-    </div>
-  </div>
-
-  <!-- include Firebase logic file -->
-  <script src="firebase.js"></script>
   <script>
-    // ensure firebase.js loaded and functions available
-    (function(){
-      // coin rain: spawn 5 small coins every 2 seconds
-      const coinContainer = document.getElementById('coinRain');
-      function spawnCoinsBatch(){
-        for(let i=0;i<5;i++){
-          const c = document.createElement('div');
-          c.className = 'coin';
-          c.style.left = Math.random() * 100 + 'vw';
-          // random size tiny
-          const size = 8 + Math.random()*10; // 8px - 18px
-          c.style.fontSize = size + 'px';
-          c.style.opacity = 0.95;
-          // random horizontal drift via transform on animation-delay? use CSS animation with random delay and duration
-          const dur = 4 + Math.random()*3; // 4-7s
-          c.style.animationDuration = dur + 's';
-          c.style.animationDelay = (Math.random()*0.5) + 's';
-          c.style.zIndex = 50;
-          c.innerText = '🪙';
-          coinContainer.appendChild(c);
-          // remove after animation ends (dur + small buffer)
-          setTimeout(()=> { c.remove(); }, (dur + 0.8) * 1000);
-        }
-      }
-      // initial spawn
-      spawnCoinsBatch();
-      // spawn repeatedly every 2 seconds
-      setInterval(spawnCoinsBatch, 2000);
-    })();
-
-    // Page actions: load user info & membership status
-    (async function initDashboard(){
-      try {
-        // protect page using firebase.js helper
-        if(typeof protectPage === 'function') protectPage();
-      } catch(e){ /* ignore */ }
-
-      // Load user details
-      try {
-        const user = await window._NM.currentUserPromise();
-        if(!user) return; // not logged in
-        const doc = await window._NM.getUserDoc(user.uid);
-        document.getElementById('name').innerText = doc.name || user.email;
-        document.getElementById('email').innerText = doc.email || '';
-        document.getElementById('wallet').innerText = '₹ ' + (doc.walletBalance || 0);
-        document.getElementById('refcode').innerText = (user.uid || '').slice(0,6).toUpperCase();
-
-        // membership checks
-        if(doc && doc.membership && doc.membership.boughtAt){
-          document.getElementById('membershipBadge').style.display = 'block';
-          document.getElementById('membershipBadge').innerText = 'You already have active membership.';
-        } else {
-          // check if user has pending request
-          const pendingQ = await firebase.firestore().collection('membership_requests').where('userUid','==', user.uid).where('status','==','PENDING').limit(1).get();
-          if(!pendingQ.empty){
-            const r = pendingQ.docs[0].data();
-            document.getElementById('membershipBadge').style.display='block';
-            document.getElementById('membershipBadge').innerText = 'Request Pending — UTR: ' + r.utr;
-          }
-        }
-
-        // team summary if available
-        if(window._NM.buildTree){
-          const levels = await window._NM.buildTree(user.uid,5);
-          if(levels && levels.length){
-            const summary = levels.map((lv,i)=>`Level ${i}: ${lv.length} members`).join('<br>');
-            document.getElementById('teamSummary').innerHTML = summary;
-          } else document.getElementById('teamSummary').innerText = 'No team members yet.';
-        }
-      } catch(err){
-        console.error('Dashboard init error', err);
-      }
-    })();
-
-    // Modal open/close and submit handling
-    function openQRModal(){
-      document.getElementById('qrModal').style.display = 'flex';
-      document.getElementById('qrMsg').style.display = 'none';
-      document.getElementById('qrSubmitBtn').disabled = false;
-      document.getElementById('qr_name').value = '';
-      document.getElementById('qr_utr').value = '';
+    // Falling coins
+    function createCoin() {
+      const coin = document.createElement("div");
+      coin.classList.add("coin");
+      coin.style.left = Math.random() * window.innerWidth + "px";
+      coin.style.animationDuration = (Math.random() * 3 + 2) + "s";
+      document.querySelector(".coins").appendChild(coin);
+      setTimeout(() => coin.remove(), 5000);
     }
-    function closeQRModal(){
-      document.getElementById('qrModal').style.display = 'none';
+    setInterval(() => { for(let i=0;i<5;i++) createCoin(); }, 2000);
+
+    // Modal
+    const modal = document.getElementById("qrModal");
+    document.getElementById("buyNowBtn").onclick = () => modal.style.display = "block";
+    document.getElementById("closeModal").onclick = () => modal.style.display = "none";
+    window.onclick = (e) => { if(e.target == modal) modal.style.display = "none"; }
+
+    // WhatsApp + Firebase (dummy example)
+    function submitUTR() {
+      let utr = document.getElementById("utr").value;
+      let name = document.getElementById("name").value;
+      if(utr=="" || name=="") { alert("Please fill details"); return; }
+
+      // WhatsApp
+      let phone = "7318432028";
+      let msg = `New Payment Request%0AName: ${name}%0AUTR: ${utr}`;
+      window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+
+      alert("UTR submitted. Waiting for admin approval.");
+      modal.style.display = "none";
     }
-
-    document.getElementById('qrSubmitBtn').addEventListener('click', async function(){
-      try {
-        const user = await window._NM.currentUserPromise();
-        if(!user) return alert('Please login first.');
-        const name = document.getElementById('qr_name').value.trim();
-        const utr = document.getElementById('qr_utr').value.trim();
-        if(!name || !utr) return alert('Please enter name and UTR.');
-        this.disabled = true;
-        document.getElementById('qrMsg').style.display = 'block';
-        document.getElementById('qrMsg').innerText = 'Submitting request...';
-
-        // create membership request in Firestore (uses firebase.js createMembershipRequest)
-        const reqId = await window._NM.createMembershipRequest(user.uid, name, utr, document.getElementById('qrImage').src);
-
-        document.getElementById('qrMsg').innerText = 'Request submitted. Waiting for admin approval.';
-        // show badge on main card
-        document.getElementById('membershipBadge').style.display = 'block';
-        document.getElementById('membershipBadge').innerText = 'Request Pending — UTR: ' + utr;
-
-        // open WhatsApp notify (admin number)
-        const whatsappNumber = '7318432028';
-        const message = encodeURIComponent(`New membership request\nName: ${name}\nUTR: ${utr}\nUser: ${user.uid}\nRequestId: ${reqId}`);
-        window.open(`https://wa.me/91${whatsappNumber}?text=${message}`, '_blank');
-
-        // close modal after small delay
-        setTimeout(()=> { closeQRModal(); }, 1200);
-      } catch(err){
-        console.error(err);
-        alert('Error: ' + (err.message || err));
-        document.getElementById('qrSubmitBtn').disabled = false;
-        document.getElementById('qrMsg').innerText = 'Error submitting. Try again.';
-      }
-    });
-
-    // copy referral
-    function copyReferral(){
-      const user = firebase.auth().currentUser;
-      if(!user) return alert('User not loaded');
-      const code = user.uid.slice(0,6).toUpperCase();
-      const link = location.origin + '/signup.html?ref=' + code;
-      navigator.clipboard.writeText(link).then(()=> alert('Referral link copied:\\n' + link));
-    }
-
-    // logout
-    function logout(){ if(typeof window._NM !== 'undefined' && window._NM.logout) window._NM.logout(); else firebase.auth().signOut().then(()=>location.href='index.html'); }
-
   </script>
 </body>
 </html>
