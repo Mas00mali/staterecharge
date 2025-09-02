@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8"><title>Sign Up - ICAN</title>
+  <meta charset="utf-8"><title>Sign Up</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -10,33 +10,33 @@
 </head>
 <body>
   <div class="container">
-    <div class="card" style="max-width:620px;margin:0 auto">
-      <h2>Create Account</h2>
-      <input id="name" class="input" placeholder="Full name" />
+    <div class="card" style="max-width:520px;margin:40px auto">
+      <h2>Create account</h2>
+      <input id="name" class="input" placeholder="Full name">
       <div style="height:8px"></div>
-      <input id="email" class="input" placeholder="Email" />
+      <input id="email" class="input" placeholder="Email">
       <div style="height:8px"></div>
-      <input id="password" class="input" placeholder="Password" type="password" />
+      <input id="password" type="password" class="input" placeholder="Password">
       <div style="height:8px"></div>
-      <input id="sponsor" class="input" placeholder="Sponsor Code (optional)" />
+      <input id="sponsor" class="input" placeholder="Sponsor referral code (optional)">
       <div style="height:12px"></div>
-      <button class="btn btn-primary" onclick="doSignup()">Sign Up</button>
-      <button class="btn btn-ghost" onclick="location.href='index.html'">Back to Login</button>
+      <button class="btn btn-primary" onclick="doSignup()">Sign up</button>
+      <button class="btn btn-ghost" onclick="location.href='index.html'">Back to login</button>
       <p id="msg" class="small"></p>
     </div>
   </div>
 
   <script src="firebase.js"></script>
   <script>
-    redirectIfLoggedIn('dashboard.html');
     async function doSignup(){
-      const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      const sponsor = document.getElementById('sponsor').value.trim();
       try{
-        const user = await window._NM.signupUser(name,email,password,sponsor);
-        window.location='dashboard.html';
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const pass = document.getElementById('password').value;
+        const sponsor = document.getElementById('sponsor').value.trim();
+        if(!name||!email||!pass) return alert('Fill required fields');
+        await window._NM.signupUser(name,email,pass,sponsor);
+        location.href='dashboard.html';
       }catch(e){ document.getElementById('msg').innerText = e.message; }
     }
   </script>
