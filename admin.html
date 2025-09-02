@@ -1,54 +1,120 @@
-<!-- Admin.html -->
-<!DOCTYPE html>
-<html lang="en">
+<!-- admin.html (REPLACE your admin.html with this file) -->
+<!doctype html>
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel</title>
-  <style>
-    body {font-family: Arial, sans-serif; background:#f9f9f9; margin:0;}
-    header {background:#333;color:white;padding:15px;text-align:center;}
-    .container {padding:20px;}
-    table {width:100%;border-collapse:collapse;}
-    th,td {border:1px solid #ccc;padding:10px;text-align:center;}
-    th {background:#4CAF50;color:white;}
-    button {padding:6px 12px;border:none;border-radius:6px;cursor:pointer;}
-    .approve {background:#28a745;color:white;}
-  </style>
+  <meta charset="utf-8">
+  <title>Admin Panel - ICAN</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
+  <div class="topbar card">
+    <div style="font-weight:800">Admin Panel</div>
+    <div style="margin-left:auto"><button class="btn btn-ghost" onclick="logout()">Logout</button></div>
+  </div>
 
-<header>
-  <h1>Admin Panel</h1>
-</header>
+  <div class="container">
+    <div id="adminArea" class="card">
+      <h3>Pending Membership Requests</h3>
+      <div id="pendingRequests">Loading...</div>
+    </div>
 
-<div class="container">
-  <h2>Pending Approvals</h2>
-  <table>
-    <tr>
-      <th>User Name</th>
-      <th>UTR Number</th>
-      <th>Status</th>
-      <th>Action</th>
-    </tr>
-    <!-- Example Pending User -->
-    <tr>
-      <td>Rahul Sharma</td>
-      <td>UTR123456</td>
-      <td><span style="color:orange;">Pending</span></td>
-      <td><button class="approve" onclick="approveUser(this)">Approve</button></td>
-    </tr>
-  </table>
-</div>
+    <div class="card" style="margin-top:12px">
+      <h3>Company Wallet</h3>
+      <div id="adminWallet">Loading...</div>
+    </div>
 
-<script>
-  function approveUser(btn){
-    let row = btn.parentNode.parentNode;
-    row.cells[2].innerHTML = "<span style='color:green;'>Approved</span>";
-    btn.remove();
-    alert("User Approved ✅ Commission Released!");
-  }
-</script>
+    <div class="card" style="margin-top:12px">
+      <h3>Recent Commissions</h3>
+      <div id="commissionsList">Loading...</div>
+    </div>
 
+    <div class="card" style="margin-top:12px">
+      <h3>All Users</h3>
+      <div id="usersList">Loading...</div>
+    </div>
+  </div>
+
+  <script src="firebase.js"></script>
+  <script>
+    // Admin guard: ensure logged in and role=ADMIN
+    (async ()=>{
+      const user = await window._NM.currentUserPromise();
+      if(!user) return window.location = 'index.html';
+      const doc = await window._NM.getUserDoc(user.uid);
+      if(!doc || doc.role !== 'ADMIN'){ alert('Access denied. Make sure your user has role: ADMIN in Firestore.'); return window.location='dashboard.html'; }
+      loadAdmin();
+    })();
+
+    async function loadAdmin(){
+      const listWrap = document.getElementById('pendingRequests');
+      listWrap.innerHTML = 'Loading...';
+      try{
+        const reqs = await window._NM.getPendingMembershipRequests(200);
+        if(!reqs.length){ listWrap.innerHTML = '<div class="small">No pending requests.</div>'; } else {
+          listWrap.innerHTML = '';
+          reqs.forEach(r => {
+            const box = document.createElement('div');
+            box.className = 'card';
+            box.style.marginBottom='8px';
+            box.innerHTML = `<div style="display:flex;gap:12px;align-items:center">
+              <div style="flex:1">
+                <div><strong>${r.name}</strong> <span class="small"> (User: ${r.userUid})</span></div>
+                <div class="small">UTR: ${r.utr}</div>
+                <div class="small">Submitted: ${r.createdAt && r.createdAt.toDate ? r.createdAt.toDate().toLocaleString() : ''}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <button class="btn btn-primary" onclick="approveReq('${r.id}')">Approve</button>
+                <button class="btn btn-ghost" onclick="rejectReq('${r.id}')">Reject</button>
+              </div>
+            </div>`;
+            listWrap.appendChild(box);
+          });
+        }
+
+        // Admin wallet
+        const wallet = await window._NM.getAdminWallet();
+        document.getElementById('adminWallet').innerText = 'Balance: ₹ ' + (wallet.walletBalance || 0);
+
+        // Commissions
+        const comms = await window._NM.getAllCommissions(50);
+        document.getElementById('commissionsList').innerHTML = comms.length ? comms.map(c=>{
+          const rows = (c.records||[]).map(r => `L${r.level}→${r.to==='ADMIN'?'Company':r.to} ₹${r.amount}`).join('<br>');
+          return `<div style="padding:8px;border-bottom:1px solid rgba(255,255,255,0.03)">${c.buyerUid} • ${new Date(c.distributedAt?.toDate?.() || Date.now()).toLocaleString()}<div style="font-size:13px;margin-top:6px">${rows}</div></div>`;
+        }).join('') : 'No commissions';
+
+        // Users
+        const users = await window._NM.getAllUsers();
+        document.getElementById('usersList').innerHTML = users.length ? `<table class="table"><thead><tr><th>Name</th><th>Email</th><th>Referral</th><th>Wallet</th><th>Role</th></tr></thead><tbody>${users.map(u=> `<tr><td>${u.name||''}</td><td>${u.email||''}</td><td>${u.referralCode||''}</td><td>₹ ${u.walletBalance||0}</td><td>${u.role||'ASSOCIATE'}</td></tr>`).join('')}</tbody></table>` : 'No users';
+
+      }catch(e){
+        listWrap.innerHTML = 'Error: ' + e.message;
+      }
+    }
+
+    async function approveReq(id){
+      if(!confirm('Approve this membership and distribute commissions?')) return;
+      try{
+        const admin = firebase.auth().currentUser;
+        const res = await window._NM.adminApproveRequest(id, admin ? admin.uid : 'ADMIN');
+        alert('Approved. Commission distributed.');
+        loadAdmin();
+      }catch(e){ alert('Error: '+ e.message); }
+    }
+
+    async function rejectReq(id){
+      const reason = prompt('Enter reject reason (optional)');
+      try{
+        const admin = firebase.auth().currentUser;
+        await window._NM.adminRejectRequest(id, admin ? admin.uid : 'ADMIN', reason || '');
+        alert('Request rejected.');
+        loadAdmin();
+      }catch(e){ alert('Error: '+ e.message); }
+    }
+  </script>
 </body>
 </html>
