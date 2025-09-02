@@ -2,188 +2,212 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Dashboard</title>
+  <title>Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
   <style>
     body {
       margin: 0;
       padding: 0;
-      overflow-x: hidden;
-      background: linear-gradient(to right, #007bff, #00c851, #ff4444);
+      background: linear-gradient(to right, #4facfe, #00f2fe);
+      height: 100vh;
+      overflow: hidden;
       font-family: Arial, sans-serif;
-      color: white;
-      text-align: center;
     }
 
-    header {
-      position: relative;
-      background: rgba(0,0,0,0.5);
-      padding: 15px;
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 24px;
-    }
-
-    .admin-btn {
-      position: absolute;
-      top: 10px;
-      right: 20px;
-      background: gold;
-      color: black;
-      padding: 8px 16px;
-      border-radius: 20px;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    .coins {
-      position: fixed;
-      top: 0;
-      left: 0;
-      pointer-events: none;
-      z-index: 999;
-    }
-
+    /* Coins */
     .coin {
       position: absolute;
+      top: -50px;
       width: 20px;
       height: 20px;
-      background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
       border-radius: 50%;
-      animation: fall linear forwards;
-    }
-
-    @keyframes fall {
-      0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
-      100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
-    }
-
-    .plan {
-      margin-top: 40px;
-      background: rgba(255,255,255,0.1);
-      padding: 20px;
-      border-radius: 15px;
-      display: inline-block;
-    }
-
-    .plan h2 {
-      margin: 0 0 10px;
-    }
-
-    .btn {
       background: gold;
-      color: black;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 15px;
-      font-size: 16px;
-      cursor: pointer;
+      box-shadow: 0 0 5px #ffd700;
+      animation: fall 5s linear infinite;
+    }
+    @keyframes fall {
+      to {
+        transform: translateY(100vh);
+      }
     }
 
-    /* QR modal */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.7);
+    /* Plans */
+    .plans {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 80px;
     }
-
-    .modal-content {
+    .plan {
       background: white;
-      color: black;
-      margin: 10% auto;
-      padding: 20px;
       border-radius: 15px;
-      width: 90%;
-      max-width: 400px;
-      text-align: center;
-    }
-
-    .modal-content img {
+      padding: 20px;
       width: 200px;
-      height: auto;
-      margin-bottom: 10px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
-
-    .modal-content input {
-      width: 90%;
-      padding: 8px;
+    .plan h2 {
       margin: 10px 0;
     }
+    .silver { border: 3px solid #C0C0C0; }
+    .gold { border: 3px solid #FFD700; }
+    .diamond { border: 3px solid #00CED1; }
 
-    .close {
-      float: right;
-      font-size: 22px;
+    .buy-btn {
+      margin-top: 15px;
+      padding: 10px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 8px;
       cursor: pointer;
-      color: red;
+    }
+
+    /* Admin login button */
+    .admin-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: red;
+      color: white;
+      padding: 8px 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    /* Popup */
+    .popup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      z-index: 20;
+    }
+    .popup img {
+      width: 200px;
+      margin-bottom: 15px;
+    }
+    .popup input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    .popup button {
+      background: green;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
+  <!-- Admin Login -->
+  <button class="admin-btn" onclick="window.location.href='admin.html'">Admin Login</button>
 
-  <header>
-    <h1>Welcome to Dashboard</h1>
-    <a href="admin.html" class="admin-btn">Admin Login</a>
-  </header>
+  <!-- Coins container -->
+  <div id="coins"></div>
 
-  <div class="plan">
-    <h2>Gold Plan - ₹599</h2>
-    <p>Buy this plan to start earning commissions.</p>
-    <button class="btn" id="buyNowBtn">Buy Now</button>
-  </div>
-
-  <!-- Modal -->
-  <div class="modal" id="qrModal">
-    <div class="modal-content">
-      <span class="close" id="closeModal">&times;</span>
-      <h3>Scan & Pay</h3>
-      <img src="https://i.postimg.cc/R07NbjBZ/Screenshot-20250902-232628.jpg" alt="QR Code">
-      <p>Send payment & enter UTR below:</p>
-      <input type="text" id="utr" placeholder="Enter UTR Number">
-      <input type="text" id="name" placeholder="Enter Your Name">
-      <button class="btn" onclick="submitUTR()">Submit</button>
+  <!-- Plans -->
+  <div class="plans">
+    <div class="plan silver">
+      <h2>Silver</h2>
+      <p>₹599</p>
+      <button class="buy-btn" onclick="openPopup('silver')">Buy Now</button>
+    </div>
+    <div class="plan gold">
+      <h2>Gold</h2>
+      <p>₹2599</p>
+      <button class="buy-btn" onclick="openPopup('gold')">Buy Now</button>
+    </div>
+    <div class="plan diamond">
+      <h2>Diamond</h2>
+      <p>₹5599</p>
+      <button class="buy-btn" onclick="openPopup('diamond')">Buy Now</button>
     </div>
   </div>
 
-  <div class="coins"></div>
+  <!-- Popup -->
+  <div class="popup" id="popup">
+    <h2 id="planTitle"></h2>
+    <img id="qrImage" src="" alt="QR Code">
+    <input type="text" id="utr" placeholder="Enter UTR Number">
+    <input type="text" id="custName" placeholder="Enter Your Name">
+    <button onclick="submitUTR()">Submit</button>
+  </div>
 
   <script>
-    // Falling coins
-    function createCoin() {
-      const coin = document.createElement("div");
-      coin.classList.add("coin");
+    // Firebase config (replace with your own)
+    const firebaseConfig = {
+      apiKey: "AIzaSy...",
+      authDomain: "yourapp.firebaseapp.com",
+      projectId: "yourapp",
+      databaseURL: "https://yourapp.firebaseio.com",
+      storageBucket: "yourapp.appspot.com",
+      messagingSenderId: "123456789",
+      appId: "1:123456789:web:abc"
+    };
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Coins animation
+    setInterval(() => {
+      let coin = document.createElement("div");
+      coin.className = "coin";
       coin.style.left = Math.random() * window.innerWidth + "px";
-      coin.style.animationDuration = (Math.random() * 3 + 2) + "s";
-      document.querySelector(".coins").appendChild(coin);
+      document.getElementById("coins").appendChild(coin);
       setTimeout(() => coin.remove(), 5000);
+    }, 400);
+
+    // Popup logic
+    let currentPlan = "";
+    function openPopup(plan) {
+      currentPlan = plan;
+      document.getElementById("popup").style.display = "block";
+      if(plan === "silver"){
+        document.getElementById("qrImage").src = "https://i.postimg.cc/R07NbjBZ/Screenshot-20250902-232628.jpg";
+        document.getElementById("planTitle").innerText = "Silver Plan ₹599";
+      }
+      if(plan === "gold"){
+        document.getElementById("qrImage").src = "https://i.postimg.cc/xyz/gold.jpg";
+        document.getElementById("planTitle").innerText = "Gold Plan ₹2599";
+      }
+      if(plan === "diamond"){
+        document.getElementById("qrImage").src = "https://i.postimg.cc/xyz/diamond.jpg";
+        document.getElementById("planTitle").innerText = "Diamond Plan ₹5599";
+      }
     }
-    setInterval(() => { for(let i=0;i<5;i++) createCoin(); }, 2000);
 
-    // Modal
-    const modal = document.getElementById("qrModal");
-    document.getElementById("buyNowBtn").onclick = () => modal.style.display = "block";
-    document.getElementById("closeModal").onclick = () => modal.style.display = "none";
-    window.onclick = (e) => { if(e.target == modal) modal.style.display = "none"; }
+    function submitUTR(){
+      const utr = document.getElementById("utr").value;
+      const name = document.getElementById("custName").value;
+      if(!utr || !name) { alert("Please fill all fields"); return; }
 
-    // WhatsApp + Firebase (dummy example)
-    function submitUTR() {
-      let utr = document.getElementById("utr").value;
-      let name = document.getElementById("name").value;
-      if(utr=="" || name=="") { alert("Please fill details"); return; }
+      firebase.database().ref("utrSubmissions").push({
+        plan: currentPlan,
+        utr: utr,
+        name: name,
+        status: "pending",
+        time: new Date().toISOString()
+      });
 
-      // WhatsApp
-      let phone = "7318432028";
-      let msg = `New Payment Request%0AName: ${name}%0AUTR: ${utr}`;
-      window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
-
-      alert("UTR submitted. Waiting for admin approval.");
-      modal.style.display = "none";
+      alert("UTR submitted! Waiting for approval.");
+      document.getElementById("popup").style.display = "none";
     }
   </script>
 </body>
