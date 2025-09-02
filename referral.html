@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><title>Referral</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div class="topbar card">
+    <div style="font-weight:800">Referral</div>
+    <div style="margin-left:auto"><button class="btn btn-ghost" onclick="location.href='dashboard.html'">Back</button></div>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <div class="small">Your referral link</div>
+      <div id="link" style="font-family:monospace;margin-top:6px">—</div>
+      <button class="btn btn-primary" style="margin-top:8px" onclick="copyLink()">Copy</button>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="small">Direct referrals (Level 1)</div>
+      <div id="directs">Loading…</div>
+    </div>
+  </div>
+
+  <script src="firebase.js"></script>
+  <script>
+    protectPage();
+    (async ()=>{
+      const user = await window._NM.currentUserPromise();
+      const code = user.uid.slice(0,6).toUpperCase();
+      const link = location.origin + '/signup.html?ref=' + code;
+      document.getElementById('link').innerText = link;
+      const q = await firebase.firestore().collection('users').where('sponsorCode','==',code).get();
+      const list = q.docs.map(d=> d.data());
+      document.getElementById('directs').innerHTML = list.length ? list.map(l=> `<div class='small'>${l.name||'Member'} • ${l.email||''}</div>`).join('') : 'No directs yet.';
+    })();
+
+    function copyLink(){ const txt = document.getElementById('link').innerText; navigator.clipboard.writeText(txt).then(()=> alert('Copied')); }
+  </script>
+</body>
+</html>
