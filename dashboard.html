@@ -1,78 +1,145 @@
-<!-- Dashboard.html -->
-<!DOCTYPE html>
-<html lang="en">
+<!-- dashboard.html (REPLACE your dashboard.html with this file) -->
+<!doctype html>
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Dashboard</title>
-  <style>
-    body {font-family: Arial, sans-serif; background: #f4f4f9; margin:0;}
-    header {background:#4CAF50;color:white;padding:15px;text-align:center;}
-    .membership-box {
-      background:white;margin:15px auto;padding:20px;border-radius:12px;
-      box-shadow:0px 4px 12px rgba(0,0,0,0.2);text-align:center;max-width:500px;
-    }
-    .membership-box img {width:200px;margin:10px 0;border-radius:10px;border:2px solid gold;}
-    .membership-box input {
-      width:90%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:8px;
-    }
-    .membership-box button {
-      background:gold;border:none;padding:12px;border-radius:8px;width:100%;
-      cursor:pointer;font-size:16px;font-weight:bold;
-    }
-    .membership-box button:hover {background:darkorange;color:white;}
-    .status-box {
-      margin-top:10px;padding:10px;border-radius:8px;font-weight:bold;
-    }
-    .pending {background:#fff3cd;color:#856404;}
-    .approved {background:#d4edda;color:#155724;}
-  </style>
+  <meta charset="utf-8">
+  <title>Dashboard - ICAN</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
-
-<header>
-  <h1>Welcome to Dashboard</h1>
-</header>
-
-<!-- Membership Section -->
-<div class="membership-box">
-  <h2>Buy Membership ₹599</h2>
-  <p>Scan QR and Pay</p>
-  <img src="https://i.postimg.cc/R07NbjBZ/Screenshot-20250902-232628.jpg" alt="QR Code">
-
-  <form id="utrForm">
-    <input type="text" id="name" placeholder="Enter Your Name" required>
-    <input type="text" id="utr" placeholder="Enter UTR Number" required>
-    <button type="submit">Submit</button>
-  </form>
-
-  <!-- Status Box -->
-  <div id="statusBox" class="status-box pending" style="display:none;">
-    Waiting for Admin Approval...
+  <div class="topbar card">
+    <div style="font-weight:800">ICAN Network Marketing</div>
+    <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+      <button class="btn btn-ghost" onclick="location.href='wallet.html'">Wallet</button>
+      <button class="btn btn-ghost" onclick="location.href='tree.html'">Team Tree</button>
+      <button class="btn btn-ghost" onclick="location.href='referral.html'">Referral</button>
+      <button class="btn btn-ghost" onclick="logout()">Logout</button>
+    </div>
   </div>
-</div>
 
-<div class="content" style="padding:20px;">
-  <h2>My Profile</h2>
-  <p>Normal dashboard content yaha ayega (Wallet, Recharge, Tree, Reports, etc).</p>
-</div>
+  <div class="container">
+    <!-- Membership / QR / UTR Submit (TOP) -->
+    <div class="card" id="membershipCard" style="max-width:760px;margin:16px auto;padding:16px;">
+      <h2>Buy Membership ₹599</h2>
+      <p class="small">Scan the QR below to pay ₹599. After payment, enter UTR & submit. Admin will verify and approve.</p>
 
-<script>
-  document.getElementById("utrForm").addEventListener("submit", function(e) {
-    e.preventDefault();
-    let name = document.getElementById("name").value;
-    let utr = document.getElementById("utr").value;
-    let whatsappNumber = "7318432028";
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+        <img src="https://i.postimg.cc/R07NbjBZ/Screenshot-20250902-232628.jpg" alt="QR" style="width:220px;border:2px solid gold;border-radius:10px;margin:10px 0">
+        <div style="flex:1;min-width:260px">
+          <input id="member_name" class="input" placeholder="Enter Your Name (as in bank)" />
+          <div style="height:8px"></div>
+          <input id="member_utr" class="input" placeholder="Enter UTR / Transaction ID" />
+          <div style="height:8px"></div>
+          <button id="submitRequestBtn" class="btn btn-primary">Submit UTR & Request Activation</button>
+          <div id="membershipStatus" class="small" style="margin-top:10px;display:none"></div>
+        </div>
+      </div>
+    </div>
 
-    // WhatsApp send
-    let message = `Membership Payment Confirmation%0AName: ${name}%0AUTR: ${utr}`;
-    let url = `https://wa.me/91${whatsappNumber}?text=${message}`;
-    window.open(url, "_blank");
+    <!-- Rest of dashboard -->
+    <div id="welcome" class="card">
+      <div style="display:flex;gap:12px;align-items:center">
+        <div>
+          <div class="small">Welcome back</div>
+          <div id="name" style="font-size:20px;font-weight:700">—</div>
+          <div class="small" id="email">—</div>
+        </div>
+        <div style="margin-left:auto;text-align:right">
+          <div class="small">Wallet Balance</div>
+          <div class="wallet-big" id="wallet">₹ 0</div>
+        </div>
+      </div>
+    </div>
 
-    // Show Pending Status
-    document.getElementById("statusBox").style.display = "block";
-  });
-</script>
+    <div class="card" style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px" class="ref-card">
+        <div class="small">Your Referral Code</div>
+        <div style="font-family:monospace;font-weight:800;margin-top:6px" id="refcode">—</div>
+        <button class="btn btn-primary" style="margin-top:8px" onclick="copyReferral()">Copy referral link</button>
+      </div>
 
+      <div style="flex:2;min-width:220px" class="ref-card">
+        <div class="small">Team Summary (Levels 1–5)</div>
+        <div id="teamSummary" style="margin-top:8px">Loading...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="firebase.js"></script>
+  <script>
+    // Protect page
+    protectPage();
+
+    // Load user info and check pending requests
+    (async ()=>{
+      const user = await window._NM.currentUserPromise();
+      if(!user) return;
+      const doc = await window._NM.getUserDoc(user.uid);
+      document.getElementById('name').innerText = doc.name || user.email;
+      document.getElementById('email').innerText = doc.email;
+      document.getElementById('wallet').innerText = '₹ ' + (doc.walletBalance || 0);
+      const code = user.uid.slice(0,6).toUpperCase();
+      document.getElementById('refcode').innerText = code;
+
+      // If user already has membership
+      if(doc && doc.membership && doc.membership.boughtAt){
+        document.getElementById('membershipStatus').style.display='block';
+        document.getElementById('membershipStatus').innerText = 'You already have active membership.';
+        document.getElementById('submitRequestBtn').disabled = true;
+      } else {
+        // Check if a pending request exists for this user
+        const reqsSnap = await firebase.firestore().collection('membership_requests').where('userUid','==', user.uid).where('status','==','PENDING').limit(1).get();
+        if(!reqsSnap.empty){
+          const r = reqsSnap.docs[0].data();
+          document.getElementById('membershipStatus').style.display='block';
+          document.getElementById('membershipStatus').innerText = 'You have a pending request (UTR: ' + r.utr + '). Waiting for admin approval.';
+          document.getElementById('submitRequestBtn').disabled = true;
+        }
+      }
+
+      // Team summary (optional, shows count per level if buildTree exists)
+      if(window._NM.buildTree){
+        const levels = await window._NM.buildTree(user.uid,5);
+        if(levels && levels.length){
+          const summary = levels.map((lv,i)=>`Level ${i}: ${lv.length} members`).join('<br>');
+          document.getElementById('teamSummary').innerHTML = summary;
+        } else document.getElementById('teamSummary').innerText = 'No data';
+      }
+    })();
+
+    // Submit UTR -> create membership request + open WhatsApp notify
+    document.getElementById('submitRequestBtn').addEventListener('click', async function(){
+      try{
+        const user = await window._NM.currentUserPromise();
+        if(!user) return alert('Login required');
+        const name = document.getElementById('member_name').value.trim();
+        const utr = document.getElementById('member_utr').value.trim();
+        if(!name || !utr) return alert('Enter name and UTR');
+        const id = await window._NM.createMembershipRequest(user.uid, name, utr, 'https://i.postimg.cc/R07NbjBZ/Screenshot-20250902-232628.jpg');
+        document.getElementById('membershipStatus').style.display='block';
+        document.getElementById('membershipStatus').innerText = 'Request sent. Waiting for admin approval. Request id: ' + id;
+        this.disabled = true;
+
+        // WhatsApp notify owner (opens new tab)
+        const whatsappNumber = '7318432028';
+        const message = encodeURIComponent(`New membership request\nName: ${name}\nUTR: ${utr}\nUser: ${user.uid}\nRequestId: ${id}`);
+        window.open(`https://wa.me/91${whatsappNumber}?text=${message}`, '_blank');
+      }catch(e){ alert('Error: '+ e.message); }
+    });
+
+    function copyReferral(){
+      const user = firebase.auth().currentUser;
+      if(!user) return alert('User not loaded');
+      const code = user.uid.slice(0,6).toUpperCase();
+      const link = location.origin + '/signup.html?ref=' + code;
+      navigator.clipboard.writeText(link).then(()=> alert('Referral link copied:\\n' + link));
+    }
+  </script>
 </body>
 </html>
