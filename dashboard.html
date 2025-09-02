@@ -1,214 +1,203 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Dashboard</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: linear-gradient(to right, #4facfe, #00f2fe);
-      height: 100vh;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
-    }
-
-    /* Coins */
-    .coin {
-      position: absolute;
-      top: -50px;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: gold;
-      box-shadow: 0 0 5px #ffd700;
-      animation: fall 5s linear infinite;
-    }
-    @keyframes fall {
-      to {
-        transform: translateY(100vh);
-      }
-    }
-
-    /* Plans */
-    .plans {
-      position: relative;
-      z-index: 10;
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-      margin-top: 80px;
-    }
-    .plan {
-      background: white;
-      border-radius: 15px;
-      padding: 20px;
-      width: 200px;
-      text-align: center;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    }
-    .plan h2 {
-      margin: 10px 0;
-    }
-    .silver { border: 3px solid #C0C0C0; }
-    .gold { border: 3px solid #FFD700; }
-    .diamond { border: 3px solid #00CED1; }
-
-    .buy-btn {
-      margin-top: 15px;
-      padding: 10px;
-      background: #28a745;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    /* Admin login button */
-    .admin-btn {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      background: red;
-      color: white;
-      padding: 8px 15px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    /* Popup */
-    .popup {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      padding: 20px;
-      border-radius: 15px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-      z-index: 20;
-    }
-    .popup img {
-      width: 200px;
-      margin-bottom: 15px;
-    }
-    .popup input {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
-    .popup button {
-      background: green;
-      color: white;
-      padding: 10px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-  </style>
+  <meta charset="utf-8"><title>Dashboard - ICAN</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
-  <!-- Admin Login -->
-  <button class="admin-btn" onclick="window.location.href='admin.html'">Admin Login</button>
-
-  <!-- Coins container -->
-  <div id="coins"></div>
-
-  <!-- Plans -->
-  <div class="plans">
-    <div class="plan silver">
-      <h2>Silver</h2>
-      <p>₹599</p>
-      <button class="buy-btn" onclick="openPopup('silver')">Buy Now</button>
-    </div>
-    <div class="plan gold">
-      <h2>Gold</h2>
-      <p>₹2599</p>
-      <button class="buy-btn" onclick="openPopup('gold')">Buy Now</button>
-    </div>
-    <div class="plan diamond">
-      <h2>Diamond</h2>
-      <p>₹5599</p>
-      <button class="buy-btn" onclick="openPopup('diamond')">Buy Now</button>
+  <div class="topbar card">
+    <div class="brand">ICAN Network</div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <button class="btn btn-ghost" onclick="openProfile()">Profile</button>
+      <button class="btn btn-ghost" onclick="location.href='admin.html'">Admin</button>
+      <button class="btn btn-ghost" onclick="doLogout()">Logout</button>
     </div>
   </div>
 
-  <!-- Popup -->
-  <div class="popup" id="popup">
-    <h2 id="planTitle"></h2>
-    <img id="qrImage" src="" alt="QR Code">
-    <input type="text" id="utr" placeholder="Enter UTR Number">
-    <input type="text" id="custName" placeholder="Enter Your Name">
-    <button onclick="submitUTR()">Submit</button>
+  <div class="container">
+    <!-- Coins layer -->
+    <div id="coinLayer" style="position:fixed;inset:0;pointer-events:none;z-index:5"></div>
+
+    <!-- Plans -->
+    <div style="text-align:center;margin:18px 0">
+      <h2 class="h2">Choose Your Plan</h2>
+    </div>
+
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+      <div class="plan-card silver">
+        <h3>Silver</h3>
+        <div style="font-weight:800;font-size:20px">₹599</div>
+        <div class="small">Commission: 100/50/25/10/5</div>
+        <button class="btn btn-primary" onclick="openBuy('silver',599,'https://i.postimg.cc/R07NbjBZ/Screenshot-20250902-232628.jpg')">Buy Silver</button>
+      </div>
+
+      <div class="plan-card gold">
+        <h3 style="color: #222">Gold</h3>
+        <div style="font-weight:800;font-size:20px;color:#222">₹2599</div>
+        <div class="small" style="color:#f3d06a">Commission (approx): 430/215/110/45/25</div>
+        <button class="btn btn-primary" onclick="openBuy('gold',2599,'https://i.postimg.cc/R07NbjBZ/Screenshot-20250902-232628.jpg')">Buy Gold</button>
+      </div>
+
+      <div class="plan-card diamond">
+        <h3 style="color:#022">Diamond</h3>
+        <div style="font-weight:800;font-size:20px;color:#022">₹5599</div>
+        <div class="small" style="color:#bff">Commission (approx): 935/470/235/95/45</div>
+        <button class="btn btn-primary" onclick="openBuy('diamond',5599,'https://i.postimg.cc/R07NbjBZ/Screenshot-20250902-232628.jpg')">Buy Diamond</button>
+      </div>
+    </div>
+
+    <!-- Wallet & Team summary -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px">
+      <div class="card" style="flex:1;min-width:260px">
+        <div class="small">Wallet Balance</div>
+        <div id="wallet" class="wallet-big">₹ 0</div>
+      </div>
+
+      <div class="card" style="flex:1;min-width:260px">
+        <div class="small">Referral Code</div>
+        <div id="refcode" style="font-family:monospace;font-weight:800"></div>
+      </div>
+    </div>
+
   </div>
 
+  <!-- BUY Modal -->
+  <div id="buyModal" class="modal-backdrop" style="display:none;z-index:60">
+    <div class="modal">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:800" id="modalTitle">Buy Plan</div>
+        <button class="btn btn-ghost" onclick="closeBuy()">Close</button>
+      </div>
+      <div style="text-align:center;margin-top:10px">
+        <img id="modalQR" src="" alt="QR" style="width:220px;border-radius:8px;border:2px solid gold">
+      </div>
+      <div style="margin-top:12px">
+        <input id="buy_name" class="input" placeholder="Enter your name (as in bank)">
+        <div style="height:8px"></div>
+        <input id="buy_utr" class="input" placeholder="Enter UTR number">
+        <div style="height:8px"></div>
+        <button id="buySubmit" class="btn btn-primary" onclick="submitBuy()">Submit UTR</button>
+        <div id="buyMsg" class="small" style="margin-top:10px;display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div id="profileModal" class="modal-backdrop" style="display:none;z-index:70">
+    <div class="modal">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:800">Edit Profile</div>
+        <button class="btn btn-ghost" onclick="closeProfile()">Close</button>
+      </div>
+      <div style="margin-top:12px">
+        <input id="profile_name" class="input" placeholder="Full name">
+        <div style="height:8px"></div>
+        <input id="profile_email" class="input" placeholder="Email">
+        <div style="height:8px"></div>
+        <input id="profile_photo" class="input" placeholder="Photo URL">
+        <div style="height:8px"></div>
+        <button class="btn btn-primary" onclick="saveProfile()">Save</button>
+        <div id="profileMsg" class="small" style="margin-top:8px;display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="firebase.js"></script>
   <script>
-    // Firebase config (replace with your own)
-    const firebaseConfig = {
-      apiKey: "AIzaSy...",
-      authDomain: "yourapp.firebaseapp.com",
-      projectId: "yourapp",
-      databaseURL: "https://yourapp.firebaseio.com",
-      storageBucket: "yourapp.appspot.com",
-      messagingSenderId: "123456789",
-      appId: "1:123456789:web:abc"
-    };
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    // protect page and init
+    (async function init(){
+      try { protectPage(); } catch(e){}
+      const user = await window._NM.currentUserPromise();
+      if(!user) return location.href='index.html';
+      const doc = await window._NM.getUserDoc(user.uid);
+      document.getElementById('wallet').innerText = '₹ ' + (doc.walletBalance || 0);
+      document.getElementById('refcode').innerText = doc.referralCode || user.uid.slice(0,6).toUpperCase();
+      // coins spawn
+      startCoins();
+    })();
 
-    // Coins animation
-    setInterval(() => {
-      let coin = document.createElement("div");
-      coin.className = "coin";
-      coin.style.left = Math.random() * window.innerWidth + "px";
-      document.getElementById("coins").appendChild(coin);
-      setTimeout(() => coin.remove(), 5000);
-    }, 400);
-
-    // Popup logic
-    let currentPlan = "";
-    function openPopup(plan) {
-      currentPlan = plan;
-      document.getElementById("popup").style.display = "block";
-      if(plan === "silver"){
-        document.getElementById("qrImage").src = "https://i.postimg.cc/R07NbjBZ/Screenshot-20250902-232628.jpg";
-        document.getElementById("planTitle").innerText = "Silver Plan ₹599";
+    // coin rain
+    function startCoins(){
+      const layer = document.getElementById('coinLayer');
+      function spawnBatch(){
+        for(let i=0;i<5;i++){
+          const c = document.createElement('div');
+          c.className='coin';
+          const size = 10 + Math.random()*18;
+          c.style.width = c.style.height = size + 'px';
+          c.style.left = Math.random() * (window.innerWidth - 40) + 'px';
+          c.style.animationDuration = (4 + Math.random()*3) + 's';
+          layer.appendChild(c);
+          setTimeout(()=> c.remove(), 9000);
+        }
       }
-      if(plan === "gold"){
-        document.getElementById("qrImage").src = "https://i.postimg.cc/xyz/gold.jpg";
-        document.getElementById("planTitle").innerText = "Gold Plan ₹2599";
-      }
-      if(plan === "diamond"){
-        document.getElementById("qrImage").src = "https://i.postimg.cc/xyz/diamond.jpg";
-        document.getElementById("planTitle").innerText = "Diamond Plan ₹5599";
-      }
+      spawnBatch();
+      setInterval(spawnBatch, 2000);
     }
 
-    function submitUTR(){
-      const utr = document.getElementById("utr").value;
-      const name = document.getElementById("custName").value;
-      if(!utr || !name) { alert("Please fill all fields"); return; }
+    // buy modal logic
+    let selectedPlan = null;
+    let selectedPrice = 0;
+    let selectedQR = '';
 
-      firebase.database().ref("utrSubmissions").push({
-        plan: currentPlan,
-        utr: utr,
-        name: name,
-        status: "pending",
-        time: new Date().toISOString()
-      });
-
-      alert("UTR submitted! Waiting for approval.");
-      document.getElementById("popup").style.display = "none";
+    function openBuy(planKey, price, qr){
+      selectedPlan = planKey; selectedPrice = price; selectedQR = qr;
+      document.getElementById('modalTitle').innerText = planKey.toUpperCase() + ' • ₹' + price;
+      document.getElementById('modalQR').src = qr;
+      document.getElementById('buyMsg').style.display = 'none';
+      document.getElementById('buy_name').value = '';
+      document.getElementById('buy_utr').value = '';
+      document.getElementById('buyModal').style.display = 'flex';
     }
+    function closeBuy(){ document.getElementById('buyModal').style.display = 'none'; }
+
+    async function submitBuy(){
+      const name = document.getElementById('buy_name').value.trim();
+      const utr = document.getElementById('buy_utr').value.trim();
+      if(!name||!utr) return alert('Enter name & UTR');
+      const user = await window._NM.currentUserPromise();
+      if(!user) return alert('Login first');
+      // create membership request
+      const id = await window._NM.createMembershipRequest(user.uid, selectedPlan, selectedPrice, name, utr, selectedQR);
+      document.getElementById('buyMsg').style.display='block';
+      document.getElementById('buyMsg').innerText = 'Request submitted. Waiting admin approval. RequestID: ' + id;
+      // open whatsapp notify
+      const adminPhone = '7318432028';
+      const message = encodeURIComponent(`New membership request\nName:${name}\nPlan:${selectedPlan}\nPrice:${selectedPrice}\nUTR:${utr}\nUser:${user.uid}\nReq:${id}`);
+      window.open(`https://wa.me/91${adminPhone}?text=${message}`, '_blank');
+      setTimeout(()=> closeBuy(), 1200);
+    }
+
+    // profile modal
+    async function openProfile(){
+      const user = await window._NM.currentUserPromise();
+      if(!user) return;
+      const doc = await window._NM.getUserDoc(user.uid);
+      document.getElementById('profile_name').value = doc.name || '';
+      document.getElementById('profile_email').value = doc.email || '';
+      document.getElementById('profile_photo').value = doc.photoURL || '';
+      document.getElementById('profileModal').style.display = 'flex';
+    }
+    function closeProfile(){ document.getElementById('profileModal').style.display = 'none'; }
+    async function saveProfile(){
+      const user = await window._NM.currentUserPromise();
+      if(!user) return alert('Login first');
+      const name = document.getElementById('profile_name').value.trim();
+      const email = document.getElementById('profile_email').value.trim();
+      const photo = document.getElementById('profile_photo').value.trim();
+      // update Firestore user doc (not auth email)
+      await firebase.firestore().collection('users').doc(user.uid).update({ name, email, photoURL: photo });
+      document.getElementById('profileMsg').style.display='block';
+      document.getElementById('profileMsg').innerText = 'Profile saved.';
+      setTimeout(()=> closeProfile(), 900);
+    }
+
+    async function doLogout(){ await window._NM.logout(); }
   </script>
 </body>
 </html>
