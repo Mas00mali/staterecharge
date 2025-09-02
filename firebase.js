@@ -1,5 +1,5 @@
-// firebase.js (FINAL) - Put Firebase SDK <script> includes in each HTML BEFORE this file
-// Include these in each HTML before firebase.js:
+// firebase.js (FINAL — membership_requests + adminApproveRequest + commission distribution)
+// Include Firebase SDKs BEFORE this file in each HTML:
 // <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 // <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 // <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -18,7 +18,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// ---------- helpers ----------
+// ======= Helpers =======
 function showMsg(id, text){
   const el = document.getElementById(id);
   if(el) el.innerText = text;
@@ -30,10 +30,10 @@ function protectPage(){
   auth.onAuthStateChanged(user => { if(!user) window.location = 'index.html'; });
 }
 function currentUserPromise(){
-  return new Promise((resolve) => { const unsub = auth.onAuthStateChanged(u=>{ unsub(); resolve(u); }); });
+  return new Promise((resolve)=>{ const unsub = auth.onAuthStateChanged(u=>{ unsub(); resolve(u); }); });
 }
 
-// ---------- Signup / Login ----------
+// ======= Signup / Login (unchanged) =======
 async function signupUser(name, email, password, sponsorCode){
   const cred = await auth.createUserWithEmailAndPassword(email, password);
   await cred.user.updateProfile({ displayName: name || '' });
@@ -50,14 +50,11 @@ async function signupUser(name, email, password, sponsorCode){
   }
   return cred.user;
 }
-async function loginUser(email, password){
-  const cred = await auth.signInWithEmailAndPassword(email, password);
-  return cred.user;
-}
+async function loginUser(email, password){ const cred = await auth.signInWithEmailAndPassword(email, password); return cred.user; }
 function logout(){ auth.signOut().then(()=> window.location = 'index.html'); }
 function sendReset(email){ return auth.sendPasswordResetEmail(email); }
 
-// ---------- Wallet ----------
+// ======= Wallet =======
 async function addMoney(uid, amount, note='Add Money (demo)'){
   amount = parseFloat(amount);
   if(isNaN(amount) || amount <= 0) throw new Error('Invalid amount');
@@ -66,7 +63,7 @@ async function addMoney(uid, amount, note='Add Money (demo)'){
   await userRef.collection('walletTransactions').add({ type:'CREDIT', amount, note, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
 }
 
-// ---------- Commission Engine ----------
+// ======= Commission Engine (same as before) =======
 const COMMISSION_TABLE = [100,50,25,10,5]; // level1..level5
 
 async function findUserByReferralCode(code){
@@ -132,7 +129,7 @@ async function distributeCommission(buyerUid){
   return commissionRecords;
 }
 
-// ---------- Membership purchase ----------
+// ======= Membership purchase (server-side validated recommended) =======
 async function purchaseMembership(buyerUid, planName='MEMBERSHIP 599', planAmount=599){
   const userRef = db.collection('users').doc(buyerUid);
   await userRef.update({ membership: { name: planName, amount: planAmount, boughtAt: firebase.firestore.FieldValue.serverTimestamp() } });
@@ -140,77 +137,85 @@ async function purchaseMembership(buyerUid, planName='MEMBERSHIP 599', planAmoun
   return records;
 }
 
-// ---------- Withdrawals (user requests, admin approves) ----------
-async function requestWithdrawal(uid, amount, methodDetails = 'UPI'){
-  amount = parseFloat(amount);
-  if(isNaN(amount) || amount <= 0) throw new Error('Invalid amount');
-  const userRef = db.collection('users').doc(uid);
-  // Optional: check balance
-  const snap = await userRef.get();
-  if(!snap.exists) throw new Error('User not found');
-  const bal = snap.data().walletBalance || 0;
-  if(amount > bal) throw new Error('Insufficient balance');
-  // Create withdrawal request with status PENDING
-  const reqRef = await db.collection('withdrawals').add({
-    uid, amount, methodDetails, status: 'PENDING', createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  return reqRef.id;
+// ======= New: Membership request flow (UTR submission) =======
+
+/*
+ createMembershipRequest(userUid, displayName, utr, qrImageUrl)
+  - Creates a doc in membership_requests with status PENDING
+  - fields: userUid, name, utr, qrImageUrl(optional), status:'PENDING', createdAt
+*/
+async function createMembershipRequest(userUid, name, utr, qrImageUrl = null){
+  const payload = {
+    userUid,
+    name: name || '',
+    utr: utr || '',
+    qrImageUrl: qrImageUrl || null,
+    status: 'PENDING',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  const ref = await db.collection('membership_requests').add(payload);
+  // Optionally write a short notification doc
+  await db.collection('notifications').add({ forAdmin: true, type:'MEMBERSHIP_REQUEST', requestId: ref.id, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+  return ref.id;
 }
 
-async function adminApproveWithdrawal(withdrawId, adminUid='admin'){
-  const wRef = db.collection('withdrawals').doc(withdrawId);
-  const wSnap = await wRef.get();
-  if(!wSnap.exists) throw new Error('Withdrawal not found');
-  const w = wSnap.data();
-  if(w.status !== 'PENDING') throw new Error('Already processed');
-  // Deduct from user's wallet and mark as PAID and record admin tx
-  const userRef = db.collection('users').doc(w.uid);
-  await db.runTransaction(async (t) => {
-    const userSnap = await t.get(userRef);
-    if(!userSnap.exists) throw new Error('User missing');
-    const bal = userSnap.data().walletBalance || 0;
-    if(bal < w.amount) throw new Error('User has insufficient balance (unexpected)');
-    t.update(userRef, { walletBalance: firebase.firestore.FieldValue.increment(-w.amount) });
-    t.update(wRef, { status: 'PAID', processedAt: firebase.firestore.FieldValue.serverTimestamp(), processedBy: adminUid });
-    // admin debit record:
-    const adminRef = db.collection('admin').doc('company');
-    const adminSnap = await t.get(adminRef);
-    if(!adminSnap.exists){
-      t.set(adminRef, { walletBalance: -w.amount });
-      t.set(adminRef.collection('txs').doc(), { type:'DEBIT', amount: w.amount, note: `Payout to ${w.uid}`, to: w.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-    } else {
-      t.update(adminRef, { walletBalance: firebase.firestore.FieldValue.increment(-w.amount) });
-      t.set(adminRef.collection('txs').doc(), { type:'DEBIT', amount: w.amount, note: `Payout to ${w.uid}`, to: w.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-    }
-  });
+/*
+ adminApproveRequest(requestId, adminUid)
+  - Marks the request APPROVED and triggers purchaseMembership + commission distribution
+  - Returns purchase result (commission records)
+*/
+async function adminApproveRequest(requestId, adminUid){
+  const reqRef = db.collection('membership_requests').doc(requestId);
+  const reqSnap = await reqRef.get();
+  if(!reqSnap.exists) throw new Error('Request not found');
+  const req = reqSnap.data();
+  if(req.status !== 'PENDING') throw new Error('Request already processed');
+
+  // Mark APPROVED first (optimistic)
+  await reqRef.update({ status: 'APPROVED', approvedBy: adminUid || null, approvedAt: firebase.firestore.FieldValue.serverTimestamp() });
+
+  // Mark user's membership and distribute commission
+  const buyerUid = req.userUid;
+  const records = await purchaseMembership(buyerUid, 'MEMBERSHIP 599', 599);
+
+  // Save approval note
+  await reqRef.update({ commissionRecords: records });
+
+  return records;
 }
 
-// ---------- Admin helpers ----------
-async function getAllUsers(){
-  const snap = await db.collection('users').orderBy('createdAt','desc').get();
-  return snap.docs.map(d=> ({ id: d.id, ...d.data() }));
-}
-async function getAllCommissions(limit=50){
-  const snap = await db.collection('commissions').orderBy('distributedAt','desc').limit(limit).get();
-  return snap.docs.map(d=> ({ id: d.id, ...d.data() }));
-}
-async function getAdminWallet(){
-  const snap = await db.collection('admin').doc('company').get();
-  return snap.exists ? snap.data() : { walletBalance: 0 };
-}
-async function getWithdrawals(status='PENDING'){
-  let q = db.collection('withdrawals').orderBy('createdAt','desc');
-  if(status) q = q.where('status','==', status);
-  const snap = await q.get();
-  return snap.docs.map(d=> ({ id: d.id, ...d.data() }));
+/*
+ adminRejectRequest(requestId, adminUid, reason)
+*/
+async function adminRejectRequest(requestId, adminUid, reason = ''){
+  const reqRef = db.collection('membership_requests').doc(requestId);
+  const reqSnap = await reqRef.get();
+  if(!reqSnap.exists) throw new Error('Request not found');
+  const req = reqSnap.data();
+  if(req.status !== 'PENDING') throw new Error('Request already processed');
+  await reqRef.update({ status: 'REJECTED', rejectedBy: adminUid || null, rejectedAt: firebase.firestore.FieldValue.serverTimestamp(), rejectReason: reason });
+  return true;
 }
 
-// ---------- Utilities ----------
+// ======= Admin / Utility reads =======
+async function getPendingMembershipRequests(limit = 100){
+  const snap = await db.collection('membership_requests').where('status','==','PENDING').orderBy('createdAt','asc').limit(limit).get();
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+async function getAllRequests(limit = 200){
+  const snap = await db.collection('membership_requests').orderBy('createdAt','desc').limit(limit).get();
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+async function getAllUsers(){ const snap = await db.collection('users').orderBy('createdAt','desc').get(); return snap.docs.map(d=> ({ id: d.id, ...d.data() })); }
+async function getAdminWallet(){ const snap = await db.collection('admin').doc('company').get(); return snap.exists ? snap.data() : { walletBalance: 0 }; }
+async function getAllCommissions(limit=50){ const snap = await db.collection('commissions').orderBy('distributedAt','desc').limit(limit).get(); return snap.docs.map(d=> ({ id: d.id, ...d.data() })); }
+
 async function getUserDoc(uid){ const d = await db.collection('users').doc(uid).get(); return d.exists ? { id: d.id, ...d.data() } : null; }
 
+// Export
 window._NM = {
-  signupUser, loginUser, logout, sendReset, addMoney, purchaseMembership,
-  requestWithdrawal, adminApproveWithdrawal, distributeCommission,
-  getAllUsers, getAllCommissions, getAdminWallet, getWithdrawals,
-  findUserByReferralCode, getUserDoc, currentUserPromise
+  signupUser, loginUser, logout, sendReset, addMoney, createMembershipRequest,
+  getPendingMembershipRequests, adminApproveRequest, adminRejectRequest,
+  getAllRequests, getAllUsers, getAdminWallet, getAllCommissions,
+  getUserDoc, currentUserPromise, purchaseMembership, distributeCommission
 };
