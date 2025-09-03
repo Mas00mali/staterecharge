@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Login</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="firebase.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #3b82f6, #22c55e, #ef4444);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+    }
+    .card {
+      background: rgba(0,0,0,0.6);
+      padding: 30px;
+      border-radius: 15px;
+      width: 320px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+    input {
+      width: 90%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+    }
+    button {
+      width: 95%;
+      padding: 10px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #facc15;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover { background: #fbbf24; }
+    p { margin-top: 10px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Admin Login</h2>
+    <input id="email" type="email" placeholder="Admin Email">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="adminLogin()">Login</button>
+    <p id="msg"></p>
+  </div>
+
+  <script>
+    const auth = firebase.auth();
+    const adminEmail = "admin@staterecharge.com";  // 🔑 change to your admin email
+
+    async function adminLogin(){
+      const email=document.getElementById("email").value;
+      const pass=document.getElementById("password").value;
+      try{
+        const userCred = await auth.signInWithEmailAndPassword(email,pass);
+        if(email===adminEmail){
+          document.getElementById("msg").innerText="Login Successful ✅";
+          window.location.href="admin.html";
+        }else{
+          document.getElementById("msg").innerText="❌ Not authorized as Admin";
+          auth.signOut();
+        }
+      }catch(e){
+        document.getElementById("msg").innerText="❌ "+e.message;
+      }
+    }
+  </script>
+</body>
+</html>
