@@ -1,152 +1,172 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8"><title>Admin Panel</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="UTF-8">
+  <title>Admin Panel</title>
   <link rel="stylesheet" href="style.css">
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f9fafb; padding:20px; }
+    h1 { text-align:center; }
+    table { width:100%; border-collapse: collapse; margin:20px 0; }
+    th, td { border:1px solid #ddd; padding:8px; text-align:center; }
+    th { background:#3b82f6; color:white; }
+    button { padding:5px 10px; margin:2px; border:none; border-radius:5px; cursor:pointer; }
+    .credit { background:green; color:white; }
+    .debit { background:red; color:white; }
+    .approve { background:#22c55e; color:white; }
+    .reject { background:#ef4444; color:white; }
+  </style>
 </head>
 <body>
-  <div class="topbar card">
-    <div class="brand">Admin Panel</div>
-    <div style="margin-left:auto;display:flex;gap:8px">
-      <button class="btn btn-ghost" onclick="logout()">Logout</button>
-    </div>
-  </div>
+  <h1>Admin Panel</h1>
+  <button onclick="logout()">Logout</button>
 
-  <div class="container">
-    <div class="card">
-      <h3>Pending Membership Requests</h3>
-      <div id="pendingList" class="small">Loading...</div>
-    </div>
+  <h2>All Users</h2>
+  <table id="userTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Balance</th>
+        <th>Plan</th>
+        <th>Sponsor</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-    <div class="card" style="margin-top:12px">
-      <h3>Users</h3>
-      <div id="usersList">Loading...</div>
-    </div>
+  <h2>Pending UTR Requests</h2>
+  <table id="utrTable">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Plan</th>
+        <th>UTR</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-    <div class="card" style="margin-top:12px">
-      <h3>Transactions</h3>
-      <div id="txnList">Loading...</div>
-    </div>
-
-  </div>
-
-  <script src="firebase.js"></script>
   <script>
-    // Admin guard: must be logged in and have role 'ADMIN'
-    (async function guard(){
-      const user = await window._NM.currentUserPromise();
-      if(!user) return location.href='index.html';
-      const doc = await window._NM.getUserDoc(user.uid);
-      if(!doc || doc.role !== 'ADMIN'){ alert('Access denied. Make sure user role=ADMIN in Firestore.'); return location.href='dashboard.html'; }
-      loadPending();
-      loadUsers();
-      loadTxns();
-    })();
+    const db = firebase.firestore();
+    const auth = firebase.auth();
 
-    async function loadPending(){
-      const wrap = document.getElementById('pendingList');
-      wrap.innerHTML = 'Loading...';
-      try{
-        const reqs = await window._NM.getPendingMembershipRequests(500);
-        if(!reqs.length){ wrap.innerHTML = '<div class="small">No pending requests.</div>'; return; }
-        wrap.innerHTML = '';
-        reqs.forEach(r=>{
-          const el = document.createElement('div');
-          el.className = 'card';
-          el.style.marginBottom='8px';
-          el.innerHTML = `
-            <div style="display:flex;gap:12px;align-items:center">
-              <div style="flex:1">
-                <div><strong>${r.name}</strong> <span class="small">(${r.userUid})</span></div>
-                <div class="small">Plan: ${r.planKey} • Amount: ₹${r.planPrice}</div>
-                <div class="small">UTR: ${r.utr}</div>
-                <div class="small">Submitted: ${r.createdAt && r.createdAt.toDate ? r.createdAt.toDate().toLocaleString() : ''}</div>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:6px">
-                <button class="btn btn-primary" onclick="approve('${r.id}')">Approve</button>
-                <button class="btn btn-ghost" onclick="reject('${r.id}')">Reject</button>
-              </div>
-            </div>
-          `;
-          wrap.appendChild(el);
-        });
-      }catch(e){ wrap.innerText = 'Error: ' + e.message; }
+    // Logout
+    function logout(){
+      auth.signOut().then(()=> location.href='login.html');
     }
 
-    async function approve(id){
-      if(!confirm('Approve and distribute commission?')) return;
-      const admin = firebase.auth().currentUser;
-      try{
-        await window._NM.adminApproveRequest(id, admin ? admin.uid : 'ADMIN');
-        alert('Approved and commissions distributed.');
-        loadPending(); loadUsers(); loadTxns();
-      }catch(e){ alert('Error: ' + e.message); }
-    }
-    async function reject(id){
-      const reason = prompt('Reject reason (optional)');
-      const admin = firebase.auth().currentUser;
-      try{
-        await window._NM.adminRejectRequest(id, admin ? admin.uid : 'ADMIN', reason || '');
-        alert('Rejected.');
-        loadPending();
-      }catch(e){ alert('Error: ' + e.message); }
-    }
-
-    async function loadUsers(){
-      const wrap = document.getElementById('usersList');
-      wrap.innerHTML = 'Loading...';
-      try{
-        const users = await window._NM.getAllUsers();
-        if(!users.length){ wrap.innerHTML='<div class="small">No users</div>'; return; }
-        const table = document.createElement('table'); table.className='table';
-        table.innerHTML = `<thead><tr><th>Name</th><th>Email</th><th>Wallet</th><th>Plan</th><th>Action</th></tr></thead><tbody></tbody>`;
-        const tbody = table.querySelector('tbody');
-        users.forEach(u=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${u.name || ''}</td><td>${u.email || ''}</td><td>₹ ${u.walletBalance || 0}</td><td>${u.plan || ''}</td>
+    // Load Users
+    function loadUsers(){
+      db.collection("users").onSnapshot(snapshot=>{
+        const tbody = document.querySelector("#userTable tbody");
+        tbody.innerHTML="";
+        snapshot.forEach(doc=>{
+          const u=doc.data();
+          const tr=document.createElement("tr");
+          tr.innerHTML=`
+            <td>${u.name}</td>
+            <td>${u.email}</td>
+            <td>₹${u.balance||0}</td>
+            <td>${u.plan}</td>
+            <td>${u.sponsor||"-"}</td>
             <td>
-              <button class="btn btn-primary" onclick="promptCredit('${u.id}','${u.name || ''}')">Credit</button>
-              <button class="btn btn-ghost" onclick="promptDebit('${u.id}','${u.name || ''}')">Debit</button>
-            </td>`;
+              <button class="credit" onclick="updateBalance('${doc.id}',100)">+100</button>
+              <button class="debit" onclick="updateBalance('${doc.id}',-100)">-100</button>
+            </td>
+          `;
           tbody.appendChild(tr);
         });
-        wrap.innerHTML = ''; wrap.appendChild(table);
-      }catch(e){ wrap.innerText = 'Error: ' + e.message; }
+      });
     }
 
-    function promptCredit(uid, name){
-      const amt = prompt(`Enter credit amount for ${name}:`);
-      if(!amt) return;
-      window._NM.creditWallet(uid, Number(amt), `Admin credit by ${firebase.auth().currentUser.uid}`).then(()=> {
-        alert('Credited');
-        loadUsers(); loadTxns();
-      }).catch(e=> alert('Error: '+ e.message));
-    }
-    function promptDebit(uid, name){
-      const amt = prompt(`Enter debit amount for ${name}:`);
-      if(!amt) return;
-      window._NM.debitWallet(uid, Number(amt), `Admin debit by ${firebase.auth().currentUser.uid}`).then(()=> {
-        alert('Debited');
-        loadUsers(); loadTxns();
-      }).catch(e=> alert('Error: '+ e.message));
+    async function updateBalance(uid, amt){
+      const ref=db.collection("users").doc(uid);
+      const snap=await ref.get();
+      if(!snap.exists) return;
+      const bal=snap.data().balance||0;
+      await ref.update({ balance: bal+amt });
+      alert("Balance Updated ✅");
     }
 
-    async function loadTxns(){
-      const wrap = document.getElementById('txnList');
-      wrap.innerHTML = 'Loading...';
-      try{
-        const txs = await window._NM.getAllTransactions(200);
-        if(!txs.length){ wrap.innerHTML = '<div class="small">No transactions</div>'; return; }
-        wrap.innerHTML = txs.map(t => `<div class="small">${t.createdAt && t.createdAt.toDate ? t.createdAt.toDate().toLocaleString() : ''} • ${t.userId} • ${t.type} • ₹${t.amount} • ${t.note || ''}</div>`).join('');
-      }catch(e){ wrap.innerText = 'Error: ' + e.message; }
+    // Load UTR Requests
+    function loadUTRs(){
+      db.collection("utr_requests").where("status","==","pending")
+      .onSnapshot(snapshot=>{
+        const tbody = document.querySelector("#utrTable tbody");
+        tbody.innerHTML="";
+        snapshot.forEach(doc=>{
+          const r=doc.data();
+          const tr=document.createElement("tr");
+          tr.innerHTML=`
+            <td>${r.userId||"?"}</td>
+            <td>${r.plan}</td>
+            <td>${r.utrNumber}</td>
+            <td>${r.status}</td>
+            <td>
+              <button class="approve" onclick="approveUTR('${doc.id}')">Approve</button>
+              <button class="reject" onclick="rejectUTR('${doc.id}')">Reject</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      });
     }
 
-    function logout(){ window._NM.logout(); }
+    // Approve UTR
+    async function approveUTR(id){
+      const ref=db.collection("utr_requests").doc(id);
+      const snap=await ref.get();
+      if(!snap.exists) return;
+      const req=snap.data();
+      
+      // Update user plan
+      const userRef=db.collection("users").doc(req.userId);
+      await userRef.update({ plan: req.plan });
+
+      // Mark request approved
+      await ref.update({ status:"approved", approvedAt:new Date() });
+
+      // Commission distribution (5 levels)
+      let sponsorId=req.sponsorId;
+      const commission = {
+        silver:[100,50,25,10,5],
+        gold:[500,250,125,75,50],
+        diamond:[1000,500,250,150,100]
+      };
+      let level=0;
+      while(sponsorId && level<5){
+        const sRef=db.collection("users").doc(sponsorId);
+        const sSnap=await sRef.get();
+        if(!sSnap.exists) break;
+        const sData=sSnap.data();
+        const bal=sData.balance||0;
+        const amt=commission[req.plan][level];
+        await sRef.update({ balance: bal+amt });
+        sponsorId=sData.sponsor;
+        level++;
+      }
+      alert("UTR Approved + Commission Distributed ✅");
+    }
+
+    async function rejectUTR(id){
+      await db.collection("utr_requests").doc(id).update({ status:"rejected" });
+      alert("UTR Rejected ❌");
+    }
+
+    // Check admin login
+    auth.onAuthStateChanged(user=>{
+      if(!user){
+        location.href="admin-login.html";
+      }else{
+        loadUsers();
+        loadUTRs();
+      }
+    });
   </script>
 </body>
 </html>
