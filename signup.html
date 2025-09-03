@@ -1,43 +1,43 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8"><title>Sign Up</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="UTF-8">
+  <title>Signup</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
 </head>
 <body>
   <div class="container">
-    <div class="card" style="max-width:520px;margin:40px auto">
+    <div class="card" style="max-width:420px;margin:40px auto">
       <h2>Create account</h2>
       <input id="name" class="input" placeholder="Full name">
-      <div style="height:8px"></div>
       <input id="email" class="input" placeholder="Email">
-      <div style="height:8px"></div>
       <input id="password" type="password" class="input" placeholder="Password">
-      <div style="height:8px"></div>
       <input id="sponsor" class="input" placeholder="Sponsor referral code (optional)">
-      <div style="height:12px"></div>
       <button class="btn btn-primary" onclick="doSignup()">Sign up</button>
       <button class="btn btn-ghost" onclick="location.href='index.html'">Back to login</button>
       <p id="msg" class="small"></p>
     </div>
   </div>
 
-  <script src="firebase.js"></script>
   <script>
     async function doSignup(){
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const pass = document.getElementById('password').value;
+      const sponsor = document.getElementById('sponsor').value.trim();
+
       try{
-        const name = document.getElementById('name').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const pass = document.getElementById('password').value;
-        const sponsor = document.getElementById('sponsor').value.trim();
-        if(!name||!email||!pass) return alert('Fill required fields');
         await window._NM.signupUser(name,email,pass,sponsor);
-        location.href='dashboard.html';
-      }catch(e){ document.getElementById('msg').innerText = e.message; }
+        document.getElementById('msg').innerText = "Signup Successful ✅";
+        window.location.href='dashboard.html';
+      }catch(e){
+        document.getElementById('msg').innerText = e.message;
+      }
     }
   </script>
 </body>
