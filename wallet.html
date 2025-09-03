@@ -1,69 +1,101 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8"><title>Wallet</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="UTF-8">
+  <title>Wallet History</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #3b82f6, #22c55e, #ef4444);
+      min-height: 100vh;
+      color: white;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(0,0,0,0.6);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      text-align: center;
+    }
+    th {
+      background: rgba(0,0,0,0.8);
+    }
+    tr:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .credit { color: #22c55e; font-weight: bold; }
+    .debit { color: #ef4444; font-weight: bold; }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #facc15;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { background: #fbbf24; }
+  </style>
 </head>
 <body>
-  <div class="topbar card">
-    <div style="font-weight:800">Wallet</div>
-    <div style="margin-left:auto"><button class="btn btn-ghost" onclick="location.href='dashboard.html'">Back</button></div>
+  <h1>My Wallet History</h1>
+  <table id="txnTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Amount</th>
+        <th>Note</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <div style="text-align:center;">
+    <button onclick="location.href='dashboard.html'">Back to Dashboard</button>
   </div>
 
-  <div class="container">
-    <div class="card">
-      <div class="small">Balance</div>
-      <div id="balance" style="font-size:28px;font-weight:800">₹ 0</div>
-      <div style="height:12px"></div>
-      <input id="amount" class="input" placeholder="Amount to add" />
-      <div style="height:10px"></div>
-      <button class="btn btn-primary" onclick="doAdd()">Add Money (Demo)</button>
-      <button class="btn btn-ghost" onclick="doRequestWithdraw()">Request Withdraw</button>
-      <p id="msg" class="small"></p>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <div class="small">Recent Transactions</div>
-      <div id="txlist" class="small">Loading…</div>
-    </div>
-  </div>
-
-  <script src="firebase.js"></script>
   <script>
-    protectPage();
-    (async ()=>{
-      const user = await window._NM.currentUserPromise();
-      const doc = await window._NM.getUserDoc(user.uid);
-      document.getElementById('balance').innerText = '₹ ' + (doc.walletBalance || 0);
-      const snap = await firebase.firestore().collection('users').doc(user.uid).collection('walletTransactions').orderBy('createdAt','desc').limit(10).get();
-      const txs = snap.docs.map(d=> d.data());
-      document.getElementById('txlist').innerHTML = txs.length ? txs.map(t=> `${t.type} • ₹ ${t.amount} • ${t.note||''}`).join('<br>') : 'No transactions yet.';
-    })();
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-    async function doAdd(){
-      const amt = document.getElementById('amount').value;
-      const user = firebase.auth().currentUser;
-      try{
-        await window._NM.addMoney(user.uid, amt);
-        alert('Money added (demo). Refreshing.');
-        location.reload();
-      }catch(e){ document.getElementById('msg').innerText = e.message; }
-    }
+    auth.onAuthStateChanged(user=>{
+      if(!user){ location.href="login.html"; return; }
+      loadTransactions(user.uid);
+    });
 
-    async function doRequestWithdraw(){
-      const amt = prompt('Enter amount to withdraw (min 1):');
-      if(!amt) return;
-      try{
-        const user = firebase.auth().currentUser;
-        await window._NM.requestWithdrawal(user.uid, amt, 'UPI:sample@upi');
-        alert('Withdrawal request created. Admin will process it.');
-      }catch(e){
-        alert('Error: '+ e.message);
-      }
+    function loadTransactions(uid){
+      db.collection("transactions")
+        .where("userId","==",uid)
+        .orderBy("createdAt","desc")
+        .onSnapshot(snapshot=>{
+          const tbody=document.querySelector("#txnTable tbody");
+          tbody.innerHTML="";
+          snapshot.forEach(doc=>{
+            const t=doc.data();
+            const tr=document.createElement("tr");
+            const typeClass = t.type==="credit" ? "credit" : "debit";
+            const date = t.createdAt?.toDate().toLocaleString() || "-";
+            tr.innerHTML=`
+              <td>${date}</td>
+              <td class="${typeClass}">${t.type.toUpperCase()}</td>
+              <td class="${typeClass}">₹${t.amount}</td>
+              <td>${t.note||""}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        });
     }
   </script>
 </body>
