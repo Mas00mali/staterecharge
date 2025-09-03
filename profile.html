@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Profile</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="firebase.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #3b82f6, #22c55e, #ef4444);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+    }
+    .card {
+      background: rgba(0,0,0,0.6);
+      padding: 30px;
+      border-radius: 15px;
+      width: 350px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+    input {
+      width: 90%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+    }
+    button {
+      width: 95%;
+      padding: 10px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #facc15;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover { background: #fbbf24; }
+    img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      margin-bottom: 10px;
+      object-fit: cover;
+    }
+    p { margin-top: 10px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>My Profile</h2>
+    <img id="profilePic" src="https://via.placeholder.com/80" alt="Profile">
+    <input id="name" type="text" placeholder="Full Name">
+    <input id="email" type="email" placeholder="Email">
+    <input id="photo" type="text" placeholder="Photo URL">
+    <button onclick="updateProfile()">Update Profile</button>
+    <p id="msg"></p>
+    <button onclick="location.href='dashboard.html'">Back to Dashboard</button>
+  </div>
+
+  <script>
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Load current user data
+    auth.onAuthStateChanged(async user=>{
+      if(!user){ location.href="login.html"; return; }
+
+      document.getElementById("name").value = user.displayName || "";
+      document.getElementById("email").value = user.email || "";
+      document.getElementById("photo").value = user.photoURL || "";
+      if(user.photoURL) document.getElementById("profilePic").src=user.photoURL;
+
+      // Firestore extra data
+      const snap = await db.collection("users").doc(user.uid).get();
+      if(snap.exists){
+        const data=snap.data();
+        document.getElementById("name").value=data.name || user.displayName || "";
+        if(data.photoURL) document.getElementById("photo").value=data.photoURL;
+      }
+    });
+
+    async function updateProfile(){
+      const user=auth.currentUser;
+      if(!user) return;
+      const name=document.getElementById("name").value;
+      const email=document.getElementById("email").value;
+      const photo=document.getElementById("photo").value;
+
+      try{
+        // Update Firebase Auth
+        await user.updateProfile({ displayName:name, photoURL:photo });
+        if(email!==user.email){
+          await user.updateEmail(email);
+        }
+
+        // Update Firestore
+        await db.collection("users").doc(user.uid).update({
+          name:name, email:email, photoURL:photo
+        });
+
+        document.getElementById("msg").innerText="✅ Profile updated successfully";
+        if(photo) document.getElementById("profilePic").src=photo;
+      }catch(e){
+        document.getElementById("msg").innerText="❌ "+e.message;
+      }
+    }
+  </script>
+</body>
+</html>
