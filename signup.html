@@ -4,22 +4,25 @@
   <meta charset="UTF-8">
   <title>Signup</title>
   <link rel="stylesheet" href="style.css">
+
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <!-- Your Firebase config & functions -->
   <script src="firebase.js"></script>
 </head>
 <body>
   <div class="container">
     <div class="card" style="max-width:420px;margin:40px auto">
-      <h2>Create account</h2>
-      <input id="name" class="input" placeholder="Full name">
+      <h2>Create Account</h2>
+      <input id="name" class="input" placeholder="Full Name">
       <input id="email" class="input" placeholder="Email">
       <input id="password" type="password" class="input" placeholder="Password">
       <input id="sponsor" class="input" placeholder="Sponsor referral code (optional)">
       <button class="btn btn-primary" onclick="doSignup()">Sign up</button>
-      <button class="btn btn-ghost" onclick="location.href='index.html'">Back to login</button>
+      <button class="btn btn-ghost" onclick="location.href='login.html'">Back to Login</button>
       <p id="msg" class="small"></p>
     </div>
   </div>
@@ -36,7 +39,7 @@
         document.getElementById('msg').innerText = "Signup Successful ✅";
         window.location.href='dashboard.html';
       }catch(e){
-        document.getElementById('msg').innerText = e.message;
+        document.getElementById('msg').innerText = "❌ " + e.message;
       }
     }
   </script>
